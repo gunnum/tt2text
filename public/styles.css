@@ -1,0 +1,6 @@
+/*
+ * Legacy compatibility shim.
+ * New workspace pages now use /styles/base.css and /styles/workspaces.css.
+ * Keep this import so any old direct references continue to render.
+ */
+@import url("/legacy/styles-legacy.css");

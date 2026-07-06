@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>T2T Ad Shots 分析 Skill 样张对比</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f3ed;
+      --paper: #fffdfa;
+      --panel: #ffffff;
+      --ink: #1d1b18;
+      --muted: #6f6860;
+      --soft: #f0ebe3;
+      --line: rgba(42, 34, 24, .14);
+      --green: #116b5c;
+      --blue: #285f8f;
+      --red: #923a2f;
+      --shadow: 0 18px 48px rgba(52, 41, 24, .1);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        linear-gradient(135deg, rgba(225, 239, 234, .9), rgba(249, 240, 226, .92) 50%, rgba(238, 239, 231, .95)),
+        var(--bg);
+      font-family: "SF Pro SC", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif;
+      line-height: 1.58;
+    }
+
+    a {
+      color: var(--green);
+      text-decoration: none;
+      font-weight: 800;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .page {
+      width: min(1500px, calc(100vw - 32px));
+      margin: 22px auto 56px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand b {
+      font-size: 24px;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .brand span {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      padding: 0 12px;
+      border: 1px solid rgba(17, 107, 92, .2);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .72);
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .hero {
+      padding: 20px;
+      border: 1px solid rgba(255, 255, 255, .72);
+      border-radius: 22px;
+      background: rgba(255, 253, 250, .9);
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+    }
+
+    .hero h1 {
+      margin: 0 0 6px;
+      font-size: clamp(28px, 4vw, 48px);
+      line-height: 1.06;
+      letter-spacing: 0;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      max-width: 880px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 440px) minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, .84);
+      box-shadow: 0 12px 36px rgba(52, 41, 24, .08);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 16px 16px 12px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(250, 247, 241, .7);
+    }
+
+    .panel-head h2 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.24;
+    }
+
+    .panel-head p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .panel-body {
+      padding: 16px;
+    }
+
+    .video {
+      display: block;
+      width: 100%;
+      max-height: 680px;
+      border-radius: 14px;
+      background: #111;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .meta {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--paper);
+      padding: 10px;
+    }
+
+    .meta span,
+    .label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .meta strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 14px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .compare-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .analysis-column {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--paper);
+      overflow: hidden;
+    }
+
+    .analysis-title {
+      min-height: 118px;
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(248, 246, 241, .94), rgba(255, 253, 250, .98));
+    }
+
+    .analysis-title .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 0 8px;
+      border-radius: 999px;
+      color: var(--blue);
+      background: rgba(40, 95, 143, .1);
+      font-size: 12px;
+      font-weight: 900;
+      margin-bottom: 10px;
+    }
+
+    .analysis-title h3 {
+      margin: 0 0 8px;
+      font-size: 20px;
+      line-height: 1.22;
+    }
+
+    .analysis-title p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .section {
+      padding: 14px;
+      border-top: 1px solid rgba(42, 34, 24, .1);
+    }
+
+    .section:first-child {
+      border-top: 0;
+    }
+
+    .section h4 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      line-height: 1.3;
+    }
+
+    .section p {
+      margin: 0;
+      color: #312d28;
+      font-size: 14px;
+    }
+
+    ul,
+    ol {
+      margin: 0;
+      padding-left: 20px;
+      color: #312d28;
+      font-size: 14px;
+    }
+
+    li + li {
+      margin-top: 8px;
+    }
+
+    .quality-list {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .quality-list li {
+      border-left: 4px solid rgba(17, 107, 92, .3);
+      padding: 8px 10px;
+      background: rgba(17, 107, 92, .07);
+      border-radius: 10px;
+      color: #2a2723;
+      font-size: 14px;
+    }
+
+    .evidence-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .evidence-list li {
+      display: grid;
+      grid-template-columns: 74px minmax(0, 1fr);
+      gap: 8px;
+      align-items: start;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--paper);
+      margin: 0;
+    }
+
+    .time {
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .evidence-text {
+      min-width: 0;
+    }
+
+    .evidence-text strong {
+      display: block;
+      font-size: 13px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .evidence-text span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .error {
+      border: 1px solid rgba(146, 58, 47, .24);
+      background: rgba(146, 58, 47, .08);
+      color: var(--red);
+      border-radius: 14px;
+      padding: 12px;
+      font-weight: 800;
+    }
+
+    .raw {
+      max-height: 280px;
+      overflow: auto;
+      margin: 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #171717;
+      color: #f7f2e9;
+      font-size: 12px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 1080px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .video {
+        max-height: 520px;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page {
+        width: min(100vw - 20px, 1500px);
+        margin-top: 12px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .nav {
+        justify-content: flex-start;
+      }
+
+      .compare-grid,
+      .meta-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero h1 {
+        font-size: 30px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="topbar">
+      <div class="brand">
+        <b>T2T</b>
+        <span>app 调研工具</span>
+      </div>
+      <nav class="nav" aria-label="页面导航">
+        <a class="button" href="/shots">视频瀑布流</a>
+        <a class="button" href="/shots/shot_20260606224805-2zt0ot">当前详情页</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <h1>Ad Video Analyzer 分析样张</h1>
+      <p>这个页面用同一条 BeReal 素材展示后续正式视频分析要遵守的 skill 输出规范。左侧保留视频和证据源，右侧并排展示当前入库分析与按 skill 规范生成的样张。</p>
+    </section>
+
+    <div id="error" class="error" hidden></div>
+
+    <section class="layout" id="content" hidden>
+      <aside class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>视频与证据源</h2>
+            <p id="shot-subtitle"></p>
+          </div>
+          <a id="source-link" class="button" href="#" target="_blank" rel="noreferrer">来源</a>
+        </div>
+        <div class="panel-body">
+          <video id="video" class="video" controls playsinline preload="metadata"></video>
+
+          <div class="meta-grid">
+            <div class="meta">
+              <span>品牌</span>
+              <strong id="brand-name"></strong>
+            </div>
+            <div class="meta">
+              <span>地区</span>
+              <strong id="region"></strong>
+            </div>
+            <div class="meta">
+              <span>投放目的</span>
+              <strong id="objective"></strong>
+            </div>
+            <div class="meta">
+              <span>素材来源</span>
+              <strong id="source-display"></strong>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>输出对比</h2>
+            <p id="sample-meta"></p>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="compare-grid">
+            <article class="analysis-column" id="current-analysis"></article>
+            <article class="analysis-column" id="sample-analysis"></article>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <section class="panel" id="quality-panel" hidden style="margin-top: 16px;">
+      <div class="panel-head">
+        <div>
+          <h2>我会重点看这些差异</h2>
+          <p>这部分不是模型输出，是页面里为了对比质量单独整理的观察点。</p>
+        </div>
+      </div>
+      <div class="panel-body">
+        <ul class="quality-list" id="quality-list"></ul>
+      </div>
+    </section>
+
+    <section class="panel" id="evidence-panel" hidden style="margin-top: 16px;">
+      <div class="panel-head">
+        <div>
+          <h2>画中文字时间轴</h2>
+          <p>用于判断模型有没有抓住“怎么认识”真正由哪个 feature 回答。</p>
+        </div>
+      </div>
+      <div class="panel-body">
+        <ul class="evidence-list" id="evidence-list"></ul>
+      </div>
+    </section>
+
+    <section class="panel" id="raw-panel" hidden style="margin-top: 16px;">
+      <div class="panel-head">
+        <div>
+          <h2>Skill 输出 JSON</h2>
+          <p>保留原始结构，方便看字段、自检和后续正式分析的输出基准。</p>
+        </div>
+      </div>
+      <div class="panel-body">
+        <pre class="raw" id="raw-json"></pre>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const SHOT_ID = "shot_20260606224805-2zt0ot";
+    const SAMPLE_URL = `/data/ad-shots/${SHOT_ID}/analysis/ad-video-analyzer-sample.json`;
+    const $ = (selector) => document.querySelector(selector);
+
+    const objectiveLabels = {
+      campaign_objective_traffic: "引流",
+      campaign_objective_reach: "触达",
+      campaign_objective_video_view: "视频播放",
+      campaign_objective_conversion: "转化",
+      campaign_objective_app_install: "应用安装",
+      all: "全部"
+    };
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function normalizeList(value) {
+      if (Array.isArray(value)) return value.filter(Boolean);
+      if (typeof value === "string" && value.trim()) return [value.trim()];
+      return [];
+    }
+
+    function listHtml(items, ordered = false) {
+      const list = normalizeList(items);
+      if (!list.length) return `<p>暂无</p>`;
+      const tag = ordered ? "ol" : "ul";
+      return `<${tag}>${list.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</${tag}>`;
+    }
+
+    function sectionHtml(title, body) {
+      return `
+        <section class="section">
+          <h4>${escapeHtml(title)}</h4>
+          ${body}
+        </section>
+      `;
+    }
+
+    function renderAnalysis(target, label, analysis, tone) {
+      target.innerHTML = `
+        <div class="analysis-title">
+          <span class="tag">${escapeHtml(label)}</span>
+          <h3>${escapeHtml(analysis?.cardTitle || "未命名分析")}</h3>
+          <p>${escapeHtml(analysis?.cardSummary || "暂无摘要")}</p>
+        </div>
+        ${sectionHtml("视频剧情", `<p>${escapeHtml(analysis?.videoStory || "暂无")}</p>`)}
+        ${sectionHtml("产品 feature", listHtml(analysis?.productFeatures))}
+        ${sectionHtml("分镜解构", listHtml(analysis?.storyboardFormula, true))}
+        ${sectionHtml("可读脚本", `<p>${escapeHtml(analysis?.script || "暂无")}</p>`)}
+        ${analysis?.selfCheck ? sectionHtml("自检", `
+          <p><strong>回答开头问题的 feature：</strong>${escapeHtml(analysis.selfCheck.featureThatAnswersQuestion || "暂无")}</p>
+          ${listHtml(analysis.selfCheck.uncertainties)}
+        `) : ""}
+      `;
+      target.dataset.tone = tone;
+    }
+
+    function renderEvidence(shot) {
+      const fromShot = normalizeList(shot?.analysisSummary?.visualTextSegments || shot?.visualTextSegments);
+      const fallback = [
+        { start: 0, end: 2.8, original: "Ma mère N’A PAS COMPRIS comment on s’est rencontrés", zh: "我妈没搞懂我们是怎么认识的" },
+        { start: 3, end: 4.4, original: "Tu postes une photo", zh: "你发一张照片" },
+        { start: 4.4, end: 5.6, original: "Ton BeReal d’aujourd’hui est ton souvenir de demain et que j’avais pu voir ta photo.", zh: "你今天的 BeReal 就是明天的回忆，而我能看到你的照片" },
+        { start: 5.6, end: 6.5, original: "Relâcher pour envoyer", zh: "松开即可发送" },
+        { start: 6.5, end: 7.3, original: "Même si on n’était pas amis", zh: "即使我们当时还不是好友" },
+        { start: 6.49, end: 8.32, original: "Mes Amis / Amis d'Amis", zh: "我的好友 / 好友的好友" },
+        { start: 7.3, end: 8.2, original: "DISCOVER THE FRIENDS OF YOUR FRIENDS", zh: "发现你朋友的朋友" },
+        { start: 8.2, end: 9.2, original: "On a eu de la chance.", zh: "我们很幸运" },
+        { start: 9.2, end: 10.18, original: "Je me sens chanceuse", zh: "我觉得自己很幸运" }
+      ];
+      const evidence = fromShot.length ? fromShot : fallback;
+      $("#evidence-list").innerHTML = evidence.map((item) => {
+        const start = Number(item.start || 0).toFixed(1);
+        const end = Number(item.end || 0).toFixed(1);
+        return `
+          <li>
+            <span class="time">${start}s - ${end}s</span>
+            <span class="evidence-text">
+              <strong>${escapeHtml(item.zh || item.original || "未识别")}</strong>
+              <span>${escapeHtml(item.original || "")}</span>
+            </span>
+          </li>
+        `;
+      }).join("");
+    }
+
+    function renderQualityNotes() {
+      const notes = [
+        "skill 样张更明确把“我的好友 / 好友的好友”这个界面文案纳入 feature，而不是只说泛泛的社交关系。",
+        "当前入库标题更短、更像前台卡片标题；skill 样张标题信息更满，但读起来更像一句摘要。",
+        "skill 样张的 feature 列表更证据化，把标题、语音、画中文字都标到了对应功能点；代价是列表会更长。",
+        "skill 样张的自检能暴露不确定性：它承认没有逐帧画面描述，所以对具体镜头只能按字幕和转写判断。"
+      ];
+      $("#quality-list").innerHTML = notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("");
+    }
+
+    async function fetchJson(url) {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`${url} 返回 ${response.status}`);
+      return response.json();
+    }
+
+    async function init() {
+      try {
+        const [shot, samplePackage] = await Promise.all([
+          fetchJson(`/api/ad-shots/${encodeURIComponent(SHOT_ID)}`),
+          fetchJson(SAMPLE_URL)
+        ]);
+        const sample = samplePackage.analysis || samplePackage;
+        const current = shot.analysisSummary || {};
+
+        $("#content").hidden = false;
+        $("#quality-panel").hidden = false;
+        $("#evidence-panel").hidden = false;
+        $("#raw-panel").hidden = false;
+
+        $("#shot-subtitle").textContent = `${shot.title || "未命名素材"} · ${SHOT_ID}`;
+        $("#video").src = shot.videoPath || `/data/ad-shots/${SHOT_ID}/video.mp4`;
+        $("#source-link").href = shot.sourceUrl || "#";
+        $("#brand-name").textContent = shot.brandName || shot.appName || "未知";
+        $("#region").textContent = Array.isArray(shot.countryCode) ? shot.countryCode.join(", ") : (shot.regionLabel || "未知");
+        $("#objective").textContent = objectiveLabels[shot.objectiveKey] || shot.objectiveKey || "未知";
+        $("#source-display").textContent = shot.sourceDisplay || shot.sourceLabel || "未知";
+        $("#sample-meta").textContent = `${samplePackage.skill || "ad-video-analyzer"} · ${samplePackage.generatedAt || "未记录时间"}`;
+
+        renderAnalysis($("#current-analysis"), "当前入库分析", current, "current");
+        renderAnalysis($("#sample-analysis"), "Skill 输出样张", sample, "sample");
+        renderEvidence(shot);
+        renderQualityNotes();
+        $("#raw-json").textContent = JSON.stringify(samplePackage, null, 2);
+      } catch (error) {
+        $("#error").hidden = false;
+        $("#error").textContent = `页面数据读取失败：${error.message}`;
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

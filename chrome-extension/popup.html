@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TT2Text Collector</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="popup-shell">
+      <section id="popup-overlay" class="popup-overlay" hidden>
+        <div class="popup-overlay-card">
+          <div id="popup-overlay-eyebrow" class="popup-overlay-eyebrow">TT2TEXT COLLECTOR</div>
+          <strong id="popup-overlay-title" class="popup-overlay-title">正在采集</strong>
+          <p id="popup-overlay-message" class="popup-overlay-message"></p>
+        </div>
+      </section>
+      <section class="preview-card">
+        <span id="preview-label">识别 App</span>
+        <strong id="detected-app">等待识别</strong>
+        <small id="detected-developer"></small>
+      </section>
+      <section id="ad-shot-status" class="ad-shot-status" role="status" aria-live="polite" aria-atomic="true" hidden></section>
+      <a id="open-local-shot" class="local-shot-link" href="#" target="_blank" rel="noreferrer" hidden>查看本地素材</a>
+      <section id="sensor-latest-card" class="latest-card" hidden>
+        <span>最近采集</span>
+        <strong id="sensor-latest-title">暂无记录</strong>
+        <small id="sensor-latest-detail"></small>
+      </section>
+      <section id="app-picker" class="project-picker" hidden>
+        <label id="app-picker-label" for="app-select">关联 App</label>
+        <select id="app-select"></select>
+        <small id="app-picker-hint">默认选中上次入库使用的 App，你也可以手动改。</small>
+      </section>
+      <button id="collect-button" type="button" disabled>采集模块加载中...</button>
+      <button id="comment-collect-button" class="secondary-button" type="button" hidden>采集当前视频评论</button>
+      <button id="batch-collect-button" class="secondary-button" type="button" hidden>一键采集所有数据</button>
+      <button id="test-scroll-button" class="secondary-button" type="button" hidden>只测试滚动</button>
+      <p id="result-message" class="result-message"></p>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

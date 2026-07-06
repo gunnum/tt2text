@@ -1,0 +1,48 @@
+{
+  "manifest_version": 3,
+  "name": "TT2Text Sensor Tower Collector",
+  "version": "0.7.16",
+  "description": "Collect Sensor Tower, TikTok search, comments, and Creative Center ads into the local TT2Text research tool.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "tabs",
+    "storage",
+    "downloads",
+    "alarms"
+  ],
+  "host_permissions": [
+    "http://localhost:3000/*",
+    "https://*.sensortower.com/*",
+    "https://www.tiktok.com/*",
+    "https://ads.tiktok.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "采集到 TT2Text"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.sensortower.com/*"
+      ],
+      "js": [
+        "content-sensortower.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "http://localhost:3000/*"
+      ],
+      "js": [
+        "content-web-bridge.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

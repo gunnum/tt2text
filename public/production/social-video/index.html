@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>T2T 社媒视频</title>
+  <link rel="stylesheet" href="/styles/base.css?v=20260616-layout-v1" />
+  <link rel="stylesheet" href="/styles/workspaces.css?v=20260616-layout-v1" />
+  <style>
+    .tool-grid, .record-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px; }
+    .tool-card, .record-card { padding:18px; border:1px solid var(--line); border-radius:20px; background:rgba(255,255,255,.72); display:grid; gap:10px; }
+    .tool-card h2, .record-card h3, .tool-card p, .record-card p { margin:0; }
+    .tool-card p, .record-card p { color:var(--muted); line-height:1.7; }
+    .record-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    @media (max-width: 1080px) { .tool-grid, .record-grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <nav class="top-link-nav" aria-label="站点导航">
+      <div class="brand-lockup">
+        <img class="brand-logo" src="/assets/t2t-logo.svg" width="140" height="40" alt="T2T" />
+        <p class="brand-subtitle">社媒视频</p>
+      </div>
+      <div class="top-link-actions">
+        <a class="system-link" href="/">首页</a>
+        <a class="system-link" href="/reports">分析输出</a>
+        <a class="system-link" href="/apps">App Dashboards</a>
+      </div>
+    </nav>
+
+    <main class="panel" style="padding:20px; display:grid; gap:20px;">
+      <section class="surface section">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Social Video</p>
+            <h1>社媒视频</h1>
+            <p class="helper">脚本、静态分镜、视频分别拆开。这里先汇总当前可用的社媒视频生产工具和最近素材。</p>
+          </div>
+        </div>
+        <div class="chain">
+          <a class="chain-node" href="/production/social-video/script">脚本</a>
+          <a class="chain-node" href="/production/social-video/storyboard">静态分镜</a>
+          <a class="chain-node" href="/production/social-video/video">视频</a>
+        </div>
+      </section>
+      <div id="status" class="status-card">准备中...</div>
+      <section class="tool-grid">
+        <article class="tool-card">
+          <p class="section-kicker">Ad Shots</p>
+          <h2>视频素材</h2>
+          <p>进入视频瀑布流，选题、详情页分析和项目归档都在这里。</p>
+          <div class="record-actions">
+            <a class="system-link" href="/shots">打开视频瀑布流</a>
+          </div>
+        </article>
+        <article class="tool-card">
+          <p class="section-kicker">Analyzer</p>
+          <h2>分析样张</h2>
+          <p>当前已有 Ad Video Analyzer 样张页，可作为后续脚本/分镜分析基准。</p>
+          <div class="record-actions">
+            <a class="system-link" href="/ad-video-analyzer-sample.html">打开样张</a>
+            <a class="system-link" href="/production/social-video/script">脚本入口</a>
+          </div>
+        </article>
+      </section>
+      <section>
+        <div class="section-head" style="padding:0 0 14px; position:static; background:transparent;">
+          <div>
+            <p class="section-kicker">Recent Ad Shots</p>
+            <h2>最近广告素材</h2>
+          </div>
+        </div>
+        <div id="recent-shots" class="record-grid"></div>
+      </section>
+      <section>
+        <div class="section-head" style="padding:0 0 14px; position:static; background:transparent;">
+          <div>
+            <p class="section-kicker">Recent Normal Videos</p>
+            <h2>最近普通视频素材</h2>
+          </div>
+        </div>
+        <div id="recent-videos" class="record-grid"></div>
+      </section>
+    </main>
+  </div>
+  <div id="toast" class="toast" hidden></div>
+  <script type="module" src="/js/production-social-video.js"></script>
+  <script type="module" src="/js/core/breadcrumb.js"></script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>视频详情</title>
+</head>
+<body>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id") || "";
+    const next = new URL("/videos/detail.html", window.location.origin);
+    next.searchParams.set("source", "normal");
+    if (id) next.searchParams.set("id", id);
+    window.location.replace(next.toString());
+  </script>
+</body>
+</html>

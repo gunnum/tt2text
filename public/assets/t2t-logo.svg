@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 160" role="img" aria-labelledby="title desc">
+  <title id="title">T2T wordmark</title>
+  <desc id="desc">A custom typographic T2T wordmark for an app research tool.</desc>
+  <g transform="skewX(-8)" fill="#1f1c18">
+    <path d="M34 24h158v40h-58v78H90V64H34z"/>
+    <path d="M382 24h158v40h-58v78h-44V64h-56z"/>
+    <path d="M229 24c39-12 94-7 123 18 18 16 25 37 20 60-6 28-29 47-66 64l-44 20h114v39H184v-33l98-45c28-13 42-26 45-42 2-12-3-23-15-30-16-10-46-12-70-5-21 6-37 17-51 35l-31-28c18-25 41-43 69-53z"/>
+  </g>
+  <path d="M184 112c42-17 92-24 150-20" fill="none" stroke="#0e7c66" stroke-width="11" stroke-linecap="round"/>
+</svg>

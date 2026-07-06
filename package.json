@@ -1,0 +1,23 @@
+{
+  "name": "tt2text",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "storage:migrate": "node scripts/migrate_local_storage.mjs",
+    "storage:migrate:move": "node scripts/migrate_local_storage.mjs --move",
+    "test:smoke": "node --test tests/*.smoke.test.mjs tests/ad-shot-app-match.test.mjs",
+    "audit:reports": "node scripts/audit_report_modules.mjs --app MEEFF",
+    "audit:reports:all": "node scripts/audit_report_modules.mjs --all",
+    "dedupe:sensortower": "node scripts/dedupe_sensortower_csv_imports.mjs",
+    "db:sync": "node scripts/sync_sqlite.mjs",
+    "mindmap:render": "node scripts/render_markmap_html.mjs",
+    "agent:install": "node scripts/manage_agent.mjs install",
+    "agent:uninstall": "node scripts/manage_agent.mjs uninstall",
+    "agent:start": "node scripts/manage_agent.mjs start",
+    "agent:stop": "node scripts/manage_agent.mjs stop",
+    "agent:restart": "node scripts/manage_agent.mjs restart",
+    "agent:status": "node scripts/manage_agent.mjs status",
+    "agent:open": "node scripts/manage_agent.mjs open"
+  }
+}

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>T2T Agent 当前状态</title>
+  <link rel="stylesheet" href="/styles/base.css?v=20260616-layout-v1" />
+  <link rel="stylesheet" href="/styles/workspaces.css?v=20260616-layout-v1" />
+</head>
+<body>
+  <div class="page-shell">
+    <nav class="top-link-nav" aria-label="站点导航">
+      <div class="brand-lockup">
+        <img class="brand-logo" src="/assets/t2t-logo.svg" width="140" height="40" alt="T2T" />
+        <p class="brand-subtitle">Agent 当前状态</p>
+      </div>
+      <div class="top-link-actions">
+        <a class="system-link" href="/">首页</a>
+        <a class="system-link" href="/agent/system">底层系统</a>
+      </div>
+    </nav>
+
+    <main class="panel" style="padding:20px;">
+      <section class="agent-dashboard">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">Agent</p>
+            <h1>当前 agent 页面</h1>
+            <p class="helper-text">这一页现在已经接回真实接口，首页只保留入口，不再堆 agent 细节。</p>
+          </div>
+          <button id="agent-refresh" type="button" class="system-link">刷新状态</button>
+        </div>
+
+        <section class="agent-hero-card">
+          <div>
+            <p class="section-kicker">Status</p>
+            <h2>服务运行状态</h2>
+            <p id="agent-page-status" class="helper-text">准备中...</p>
+          </div>
+          <div class="chain">
+            <a class="chain-node" href="/agent/system">底层系统</a>
+            <a class="chain-node" href="/report-system.html">当前系统旧页</a>
+          </div>
+        </section>
+
+        <section class="agent-status-grid">
+          <article class="agent-status-card">
+            <span>本地服务</span>
+            <strong id="agent-server-status">读取中</strong>
+            <p id="agent-server-detail">正在读取服务地址和 pid。</p>
+          </article>
+          <article class="agent-status-card">
+            <span>LaunchAgent</span>
+            <strong id="agent-launch-status">读取中</strong>
+            <p id="agent-launch-detail">正在读取 LaunchAgent 状态。</p>
+          </article>
+        </section>
+
+        <section class="agent-command-card">
+          <div>
+            <p class="section-kicker">Commands</p>
+            <h2>常用命令</h2>
+            <p class="helper-text">这里保持和旧首页一致，直接复制即可。</p>
+          </div>
+          <div id="agent-command-list" class="agent-command-list"></div>
+        </section>
+
+        <section class="agent-command-card">
+          <div>
+            <p class="section-kicker">CLI</p>
+            <h2>依赖环境</h2>
+          </div>
+          <div id="agent-cli-list" class="agent-cli-list"></div>
+        </section>
+
+        <section class="agent-command-card">
+          <div>
+            <p class="section-kicker">Logs</p>
+            <h2>日志路径</h2>
+          </div>
+          <pre id="agent-log-paths" class="agent-command-output">读取中...</pre>
+        </section>
+      </section>
+    </main>
+  </div>
+  <div id="toast" class="toast" hidden></div>
+  <script type="module" src="/js/agent-current.js"></script>
+  <script type="module" src="/js/core/breadcrumb.js"></script>
+</body>
+</html>

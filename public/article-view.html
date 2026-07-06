@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Article Markdown View</title>
+    <link rel="stylesheet" href="/article-view.css" />
+  </head>
+  <body>
+    <main class="reader-shell">
+      <nav class="reader-nav">
+        <div class="reader-brand">
+          <b>T2T</b>
+          <span>文章阅读</span>
+        </div>
+        <a id="raw-link" class="raw-link" target="_blank" rel="noreferrer">打开 md 原文</a>
+      </nav>
+      <nav class="breadcrumb" aria-label="面包屑">
+        <a href="/">资料库</a>
+        <span aria-hidden="true">/</span>
+        <span>文章阅读</span>
+      </nav>
+      <article class="reader-card">
+        <p id="reader-source" class="reader-source"></p>
+        <div id="reader-content" class="markdown-body">正在读取文章...</div>
+      </article>
+    </main>
+    <script src="/article-view.js" type="module"></script>
+  </body>
+</html>

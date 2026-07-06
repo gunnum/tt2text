@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>T2T Agent</title>
+  <link rel="stylesheet" href="/styles/base.css?v=20260616-layout-v1" />
+  <link rel="stylesheet" href="/styles/workspaces.css?v=20260616-layout-v1" />
+</head>
+<body>
+  <div class="page-shell">
+    <nav class="top-link-nav" aria-label="站点导航">
+      <div class="brand-lockup">
+        <img class="brand-logo" src="/assets/t2t-logo.svg" width="140" height="40" alt="T2T" />
+        <p class="brand-subtitle">Agent</p>
+      </div>
+      <div class="top-link-actions">
+        <a class="system-link" href="/">首页</a>
+        <a class="system-link" href="/agent/current">当前状态</a>
+        <a class="system-link" href="/agent/system">底层系统</a>
+      </div>
+    </nav>
+    <main class="panel" style="padding:20px;">
+      <section class="surface section">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Agent</p>
+            <h1>Agent</h1>
+            <p class="helper">把运行状态和系统脑图分开：日常看当前状态，排查或培训看底层系统页。</p>
+          </div>
+        </div>
+        <div class="chain">
+          <a class="chain-node" href="/agent/current">当前状态</a>
+          <a class="chain-node" href="/agent/system">底层系统</a>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="/js/core/breadcrumb.js"></script>
+</body>
+</html>

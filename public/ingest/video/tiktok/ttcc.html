@@ -1,0 +1,1677 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>T2T 视频录入 · TikTok · TTCC</title>
+  <style>
+    :root {
+      --bg: #f4efe7;
+      --paper: rgba(255, 252, 247, .94);
+      --panel: rgba(255, 255, 255, .78);
+      --ink: #1e1c18;
+      --muted: #71685f;
+      --line: rgba(44, 35, 26, .13);
+      --accent: #0e7666;
+      --accent-strong: #09594d;
+      --blue: #245f96;
+      --amber: #8a5b17;
+      --red: #9a3528;
+      --green-bg: #e6f4ed;
+      --blue-bg: #e7f0f8;
+      --amber-bg: #fff1d8;
+      --red-bg: #ffe9e4;
+      --shadow: 0 18px 54px rgba(54, 41, 18, .10);
+    }
+
+	    * { box-sizing: border-box; }
+
+	    [hidden] {
+	      display: none !important;
+	    }
+
+	    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, .78), transparent 28%),
+        linear-gradient(135deg, #e8f2ef 0%, #f4ead9 52%, #efe6da 100%);
+      font-family: "SF Pro SC", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif;
+      line-height: 1.55;
+    }
+
+    a { color: var(--accent-strong); text-decoration: none; }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: wait; opacity: .58; }
+
+    .page {
+      width: min(1440px, calc(100vw - 32px));
+      margin: 22px auto 56px;
+    }
+
+    .top-nav,
+    .toolbar,
+    .pager,
+    .modal-actions,
+    .inline-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .top-nav {
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand b {
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .brand span {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .nav-actions { justify-content: flex-end; }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .breadcrumb a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 0 10px;
+      border: 1px solid rgba(13, 111, 91, .14);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .58);
+      color: var(--accent-strong);
+    }
+
+    .breadcrumb span[aria-hidden="true"] {
+      color: rgba(113, 104, 95, .68);
+    }
+
+    .button,
+    .button-primary,
+    .button-danger,
+    .tab-button,
+    .icon-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      border-radius: 999px;
+      padding: 0 14px;
+      border: 1px solid rgba(13, 111, 91, .18);
+      background: rgba(255, 255, 255, .72);
+      color: var(--accent-strong);
+      font-size: 13px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .button-primary {
+      border: 0;
+      color: #fff;
+      background: linear-gradient(180deg, #2f7e72, #235d55);
+      box-shadow: 0 12px 28px rgba(13, 111, 91, .16);
+    }
+
+    .button-danger {
+      border-color: rgba(145, 45, 30, .18);
+      color: var(--red);
+      background: var(--red-bg);
+    }
+
+    .icon-button {
+      width: 36px;
+      min-height: 36px;
+      padding: 0;
+      border-radius: 50%;
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .surface {
+      border: 1px solid rgba(255, 255, 255, .62);
+      border-radius: 24px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .section {
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .eyebrow {
+      margin: 0 0 6px;
+      color: var(--accent-strong);
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    h1 {
+      margin-bottom: 4px;
+      font-size: 34px;
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin-bottom: 6px;
+      font-size: 22px;
+      line-height: 1.25;
+    }
+
+    .helper {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      overflow-wrap: anywhere;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      min-height: 26px;
+      border-radius: 999px;
+      padding: 0 9px;
+      border: 1px solid rgba(13, 111, 91, .12);
+      background: var(--green-bg);
+      color: var(--accent-strong);
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .status-badge.pending,
+    .status-badge.warning { background: var(--amber-bg); color: var(--amber); }
+    .status-badge.queued { background: var(--green-bg); color: var(--accent-strong); }
+    .status-badge.running { background: var(--blue-bg); color: var(--blue); }
+    .status-badge.failed { background: var(--red-bg); color: var(--red); }
+
+    .queue-panel {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) auto minmax(300px, 420px);
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .queue-copy {
+      display: grid;
+      align-content: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .queue-copy h2 {
+      margin: 0;
+    }
+
+    .queue-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .queue-status {
+      margin: 0;
+      min-height: 20px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .queue-stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(96px, 1fr));
+      gap: 10px;
+      min-width: 220px;
+    }
+
+    .queue-stat {
+      display: grid;
+      align-content: center;
+      min-height: 96px;
+      padding: 14px;
+      border: 1px solid rgba(13, 111, 91, .12);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, .66);
+    }
+
+    .queue-stat strong {
+      display: block;
+      font-size: 34px;
+      line-height: 1;
+      color: var(--accent-strong);
+      font-weight: 950;
+    }
+
+    .queue-stat span {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 950;
+    }
+
+    .queue-stat.pending strong {
+      color: var(--amber);
+    }
+
+    .current-analysis {
+      display: grid;
+      grid-template-columns: 82px minmax(0, 1fr);
+      gap: 12px;
+      align-items: center;
+      min-width: 0;
+      min-height: 96px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, .72);
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .current-analysis.idle {
+      grid-template-columns: 1fr;
+      align-content: center;
+    }
+
+    .current-analysis-cover {
+      width: 82px;
+      aspect-ratio: 9 / 16;
+      border-radius: 12px;
+      overflow: hidden;
+      background: linear-gradient(145deg, #172420, #5e776e);
+    }
+
+    .current-analysis-cover img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+    }
+
+    .current-analysis-empty-cover {
+      width: 100%;
+      height: 100%;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, .16), transparent 48%),
+        linear-gradient(145deg, #172420, #5e776e);
+    }
+
+    .current-analysis-body {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .current-analysis-title {
+      margin: 0;
+      color: var(--ink);
+      font-size: 15px;
+      line-height: 1.32;
+      font-weight: 950;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .current-analysis-meta {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 850;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .current-analysis-link {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      min-height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: rgba(13, 111, 91, .10);
+      color: var(--accent-strong);
+      font-size: 12px;
+      font-weight: 950;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .tabs-bar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .tabs-bar .tabs {
+      margin-bottom: 0;
+    }
+
+    .tab-button.active {
+      background: var(--accent-strong);
+      color: #fff;
+      border-color: var(--accent-strong);
+    }
+
+    .toolbar {
+      justify-content: space-between;
+      margin-bottom: 14px;
+      align-items: flex-end;
+    }
+
+    .filters {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      min-width: 180px;
+    }
+
+    .field.wide { min-width: min(420px, 100%); }
+    .field.compact { min-width: 150px; }
+
+    label {
+      color: #51483f;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      min-width: 0;
+      border: 1px solid rgba(25, 23, 19, .15);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, .88);
+      color: var(--ink);
+      padding: 11px 12px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: rgba(13, 111, 91, .44);
+      box-shadow: 0 0 0 3px rgba(13, 111, 91, .11);
+    }
+
+    .shot-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      align-items: start;
+    }
+
+    .shot-card {
+      display: block;
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: rgba(31, 28, 24, .08);
+      overflow: hidden;
+      box-shadow: 0 11px 30px rgba(54, 41, 18, .10);
+      color: inherit;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .shot-media-wrap {
+      position: relative;
+      width: 100%;
+      overflow: hidden;
+      background: linear-gradient(145deg, #172420, #5e776e);
+    }
+
+    .shot-media {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .shot-media-empty {
+      aspect-ratio: 16 / 9;
+      min-height: 180px;
+      background:
+        radial-gradient(circle at 24% 16%, rgba(255, 255, 255, .18), transparent 26%),
+        linear-gradient(145deg, #172420, #5e776e);
+    }
+
+    .shot-card:hover .shot-media {
+      transform: scale(1.015);
+    }
+
+    .shot-card:focus-visible {
+      outline: 3px solid rgba(13, 111, 91, .34);
+      outline-offset: 3px;
+    }
+
+    .shot-card .shot-media {
+      transition: transform 180ms ease;
+    }
+
+    .issue-badge {
+      position: absolute;
+      left: 12px;
+      top: 12px;
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, .68);
+      background: rgba(255, 241, 216, .94);
+      color: var(--amber);
+      box-shadow: 0 8px 22px rgba(31, 28, 24, .16);
+      font-size: 12px;
+      font-weight: 950;
+      backdrop-filter: blur(10px);
+    }
+
+    .issue-badge.failed {
+      background: rgba(255, 233, 228, .94);
+      color: var(--red);
+    }
+
+    .issue-badge.queued {
+      background: rgba(232, 244, 240, .95);
+      color: var(--accent-strong);
+    }
+
+    .issue-badge.running {
+      background: rgba(231, 240, 248, .94);
+      color: var(--blue);
+    }
+
+    .issue-badge.pending {
+      background: rgba(255, 255, 255, .88);
+      color: #61584f;
+    }
+
+    .issue-badge.warning {
+      background: rgba(255, 241, 216, .94);
+      color: var(--amber);
+    }
+
+    .shot-body {
+      position: absolute;
+      inset: auto 0 0;
+      padding: 38px 10px 10px;
+      display: grid;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+      gap: 6px;
+      color: #fff;
+      background: linear-gradient(180deg, transparent 0%, rgba(14, 15, 14, .54) 38%, rgba(14, 15, 14, .86) 100%);
+      pointer-events: none;
+    }
+
+    .shot-title {
+      margin: 0;
+      color: #fff;
+      font-size: 13px;
+      line-height: 1.32;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-shadow: 0 2px 12px rgba(0, 0, 0, .32);
+    }
+
+    .meta-row {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      align-items: center;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+    }
+
+    .meta-chip {
+      display: inline-flex;
+      max-width: 100%;
+      min-width: 0;
+      min-height: 21px;
+      align-items: center;
+      border-radius: 999px;
+      padding: 0 7px;
+      border: 1px solid rgba(255, 255, 255, .22);
+      background: rgba(255, 255, 255, .18);
+      color: rgba(255, 255, 255, .94);
+      font-size: 11px;
+      font-weight: 900;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      backdrop-filter: blur(10px);
+    }
+
+    .app-chip {
+      display: inline-grid;
+      grid-template-columns: 20px minmax(0, auto);
+      gap: 7px;
+      align-items: center;
+      justify-self: start;
+      width: fit-content;
+      max-width: min(100%, 176px);
+      min-height: 28px;
+      padding: 3px 10px 3px 4px;
+      border-radius: 10px;
+      border-color: rgba(255, 255, 255, .18);
+      background: linear-gradient(180deg, rgba(255, 255, 255, .22), rgba(255, 255, 255, .10));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .18), 0 8px 20px rgba(0, 0, 0, .18);
+      color: #fff;
+      font-size: 12px;
+      letter-spacing: 0;
+    }
+
+    .industry-chip {
+      max-width: 104px;
+      min-height: 28px;
+      border-radius: 10px;
+      background: rgba(231, 240, 248, .22);
+      color: #fff;
+      letter-spacing: 0;
+    }
+
+    .app-chip-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 6px;
+      object-fit: cover;
+      background: rgba(255, 255, 255, .92);
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, .60), 0 2px 8px rgba(0, 0, 0, .20);
+    }
+
+    .meta-chip > span {
+      display: block;
+      max-width: 100%;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .shot-body .meta-row {
+      display: grid;
+      grid-template-columns: minmax(0, auto) minmax(0, auto);
+      justify-content: start;
+      max-height: 47px;
+    }
+
+    .shot-body .meta-chip:not(.app-chip),
+    .shot-body .meta-chip:not(.app-chip):last-child {
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .shot-body .meta-chip:only-child {
+      grid-column: 1 / -1;
+    }
+
+    .pager {
+      justify-content: space-between;
+      margin-top: 14px;
+    }
+
+    .pager-info {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .empty-state {
+      border: 1px dashed rgba(45, 35, 23, .18);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, .55);
+      padding: 16px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    dialog {
+      width: min(760px, calc(100vw - 32px));
+      border: 0;
+      border-radius: 22px;
+      padding: 0;
+      background: transparent;
+    }
+
+    #project-dialog {
+      width: min(920px, calc(100vw - 32px));
+    }
+
+    dialog::backdrop {
+      background: rgba(31, 28, 24, .32);
+      backdrop-filter: blur(4px);
+    }
+
+    .modal {
+      padding: 20px;
+      background: var(--paper);
+      border: 1px solid rgba(255, 255, 255, .66);
+      border-radius: 22px;
+      box-shadow: 0 28px 80px rgba(31, 28, 24, .24);
+    }
+
+    .modal-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .modal-grid .wide { grid-column: 1 / -1; }
+
+    .modal-actions {
+      justify-content: space-between;
+      margin-top: 14px;
+    }
+
+    .status-line {
+      min-height: 22px;
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .project-editor-list {
+      display: grid;
+      gap: 0;
+      margin-top: 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, .52);
+    }
+
+    .project-editor-header,
+    .project-editor-row {
+      display: grid;
+      grid-template-columns: 86px minmax(180px, 1fr) minmax(220px, 1.15fr) 140px 44px;
+      gap: 12px;
+    }
+
+    .project-editor-header {
+      align-items: center;
+      padding: 10px 12px;
+      background: rgba(244, 239, 231, .68);
+      color: #51483f;
+      font-size: 12px;
+      font-weight: 950;
+    }
+
+    .project-editor-row {
+      align-items: center;
+      padding: 12px;
+      border-top: 1px solid var(--line);
+    }
+
+    .project-editor-row .field {
+      min-width: 0;
+      gap: 0;
+    }
+
+    .project-editor-row .field label {
+      display: none;
+    }
+
+    .project-editor-row input,
+    .project-editor-row select {
+      height: 46px;
+      border-radius: 12px;
+      padding: 0 14px;
+      background: rgba(255, 255, 255, .92);
+    }
+
+    .project-editor-row .project-order {
+      text-align: center;
+    }
+
+    .project-editor-row .remove-project {
+      align-self: center;
+      width: 42px;
+      min-height: 42px;
+      border-color: rgba(145, 45, 30, .16);
+      background: rgba(255, 233, 228, .64);
+      color: var(--red);
+    }
+
+    @media (max-width: 1180px) {
+      .shot-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 820px) {
+      .page { width: min(100vw - 22px, 1440px); margin-top: 16px; }
+      .top-nav, .section-head, .toolbar, .pager { align-items: flex-start; flex-direction: column; }
+      .nav-actions { justify-content: flex-start; }
+      .section { padding: 16px; border-radius: 20px; }
+      .queue-panel, .shot-grid, .modal-grid { grid-template-columns: 1fr; }
+      .queue-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; min-width: 0; }
+      .current-analysis { width: 100%; }
+      .project-editor-row { grid-template-columns: 1fr; }
+      .project-editor-header { display: none; }
+      .tabs-bar { align-items: flex-start; flex-direction: column; }
+      .project-editor-row .field { gap: 6px; }
+      .project-editor-row .field label { display: block; }
+      .project-editor-row .remove-project { justify-self: start; align-self: auto; }
+      .shot-body { padding: 44px 12px 12px; }
+      .shot-title { font-size: 15px; }
+      .meta-chip { min-height: 24px; padding: 0 8px; font-size: 12px; }
+      .app-chip { grid-template-columns: 22px minmax(0, auto); max-width: min(100%, 220px); min-height: 30px; padding: 4px 11px 4px 5px; gap: 7px; }
+      .app-chip-icon { width: 22px; height: 22px; border-radius: 6px; }
+      .shot-body .meta-row { display: flex; flex-wrap: nowrap; max-height: none; }
+      .shot-body .meta-chip,
+      .shot-body .meta-chip:last-child { max-width: 100%; }
+      .filters, .field, .field.wide { width: 100%; min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <nav class="top-nav" aria-label="页面导航">
+      <div class="brand">
+        <b>视频录入</b>
+        <span>TikTok · TTCC 广告中心</span>
+      </div>
+      <div class="nav-actions">
+        <a class="button-primary" href="https://ads.tiktok.com/business/creativecenter/inspiration/topads/pc/zh?period=180&secondIndustry=20100000000" target="_blank" rel="noreferrer">打开 Creative Center</a>
+        <button id="open-manual-import" class="button" type="button">手动导入</button>
+      </div>
+    </nav>
+
+    <nav class="breadcrumb" aria-label="面包屑">
+      <a href="/">资料库</a>
+      <span aria-hidden="true">/</span>
+      <a href="/ingest">录入数据</a>
+      <span aria-hidden="true">/</span>
+      <a href="/ingest/video">视频录入</a>
+      <span aria-hidden="true">/</span>
+      <a href="/ingest/video/tiktok">TikTok 录入</a>
+      <span aria-hidden="true">/</span>
+      <span>TTCC 广告中心</span>
+    </nav>
+
+    <section id="analysis-queue-panel" class="surface section queue-panel" aria-label="分析队列" hidden>
+      <div class="queue-copy">
+        <p class="eyebrow">Analysis Queue</p>
+        <h2>分析队列</h2>
+        <p class="helper">这里看当前有多少素材等待处理，以及系统正在分析哪一条。</p>
+        <div class="queue-actions">
+          <button id="start-analysis-queue" class="button-primary" type="button">开始分析</button>
+          <p id="analysis-queue-status" class="queue-status" aria-live="polite"></p>
+        </div>
+      </div>
+      <div class="queue-stats">
+        <div class="queue-stat">
+          <strong id="queued-count">0</strong>
+          <span>排队中</span>
+        </div>
+        <div class="queue-stat pending">
+          <strong id="pending-count">0</strong>
+          <span>待分析</span>
+        </div>
+      </div>
+      <div id="current-analysis-card" class="current-analysis" aria-live="polite"></div>
+    </section>
+
+    <section class="surface section">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Shots</p>
+          <h2>ads 视频库</h2>
+        </div>
+      </div>
+
+      <div class="tabs-bar">
+        <div id="project-tabs" class="tabs" role="tablist" aria-label="项目筛选"></div>
+        <button id="open-tab-project-editor" class="button" type="button">编辑分类</button>
+      </div>
+
+      <div class="toolbar">
+        <div class="filters">
+          <div class="field wide">
+            <label for="search-input">搜索</label>
+            <input id="search-input" type="search" placeholder="搜索标题、地区、亮点..." />
+          </div>
+          <div class="field">
+            <label for="app-filter">App / 品牌</label>
+            <select id="app-filter">
+              <option value="all">全部 App</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="status-filter">状态</label>
+            <select id="status-filter">
+              <option value="all">全部状态</option>
+              <option value="待分析">待分析</option>
+              <option value="排队中">排队中</option>
+              <option value="分析中">分析中</option>
+              <option value="分析停止">分析停止</option>
+              <option value="需补采">需补采</option>
+              <option value="失败">失败</option>
+            </select>
+          </div>
+          <div class="field compact">
+            <label for="page-size">每页</label>
+            <select id="page-size">
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+        </div>
+        <p id="shot-summary" class="pager-info">正在读取...</p>
+      </div>
+
+      <div id="shot-grid" class="shot-grid"></div>
+      <div class="pager">
+        <p id="pager-info" class="pager-info"></p>
+        <div class="inline-actions">
+          <button id="prev-page" class="button" type="button">上一页</button>
+          <button id="next-page" class="button" type="button">下一页</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="project-dialog">
+    <form id="project-form" class="modal" method="dialog">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Project Editor</p>
+          <h2>编辑项目</h2>
+          <p class="helper">可新增、重命名、归档和调整排序。已有 Shot 的项目建议归档，不直接删除。</p>
+        </div>
+      </div>
+      <div id="project-editor-list" class="project-editor-list"></div>
+      <div class="modal-actions">
+        <button id="add-project-row" class="button" type="button">新增项目</button>
+        <div class="inline-actions">
+          <button class="button" value="cancel" type="submit">取消</button>
+          <button id="save-projects" class="button-primary" value="default" type="button">保存项目</button>
+        </div>
+      </div>
+      <p id="project-status" class="status-line" aria-live="polite"></p>
+    </form>
+  </dialog>
+
+  <dialog id="manual-dialog">
+    <form id="manual-form" class="modal" method="dialog">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Manual Import</p>
+          <h2>手动导入 Shot</h2>
+          <p class="helper">插件不可用时，可以粘贴 Top Ads 详情页 URL，或粘贴包含 page_html / video_url 的采集包 JSON。</p>
+        </div>
+      </div>
+      <div class="modal-grid">
+        <div class="field wide">
+          <label for="manual-project">入库项目</label>
+          <select id="manual-project"></select>
+        </div>
+        <div class="field wide">
+          <label for="source-url">Top Ads 详情页 URL</label>
+          <input id="source-url" type="url" placeholder="https://ads.tiktok.com/business/creativecenter/topads/..." />
+        </div>
+        <div class="field">
+          <label for="capture-context">采集上下文</label>
+          <select id="capture-context">
+            <option value="topads_detail">Top Ads 详情页当前视频</option>
+            <option value="topads_results_visible">Top Ads 搜索结果页当前可见视频</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="manual-target-app">绑定对象备注</label>
+          <input id="manual-target-app" type="text" placeholder="例如 NGL / Headway" />
+        </div>
+        <div class="field wide">
+          <label for="capture-package-json">采集包 JSON（可选）</label>
+          <textarea id="capture-package-json" placeholder='{"source_ad_id":"...","video_url":"...","page_html":"..."}'></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="button" value="cancel" type="submit">关闭</button>
+        <div class="inline-actions">
+          <button id="clear-manual" class="button" type="button">清空</button>
+          <button id="queue-shot" class="button-primary" type="button">导入 Shot</button>
+        </div>
+      </div>
+      <p id="intake-status" class="status-line" aria-live="polite"></p>
+    </form>
+  </dialog>
+
+  <script>
+    const $ = (selector) => document.querySelector(selector);
+    const state = {
+      projects: [],
+      shots: [],
+      activeProject: "all",
+      query: "",
+      app: "all",
+      status: "all",
+      page: 1,
+      pageSize: 50,
+      pollTimer: null,
+      polling: false
+    };
+
+    const projectTabs = $("#project-tabs");
+    const shotGrid = $("#shot-grid");
+    const shotSummary = $("#shot-summary");
+    const pagerInfo = $("#pager-info");
+    const projectDialog = $("#project-dialog");
+    const manualDialog = $("#manual-dialog");
+    const projectEditorList = $("#project-editor-list");
+    const projectStatus = $("#project-status");
+    const analysisQueuePanel = $("#analysis-queue-panel");
+    const queuedCount = $("#queued-count");
+    const pendingCount = $("#pending-count");
+    const currentAnalysisCard = $("#current-analysis-card");
+    const startAnalysisQueueButton = $("#start-analysis-queue");
+    const analysisQueueStatus = $("#analysis-queue-status");
+    const manualProject = $("#manual-project");
+    const sourceUrl = $("#source-url");
+    const captureContext = $("#capture-context");
+    const manualTargetApp = $("#manual-target-app");
+    const capturePackageJson = $("#capture-package-json");
+    const intakeStatus = $("#intake-status");
+
+    function escapeHtml(value) {
+      return String(value || "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      })[char]);
+    }
+
+    function escapeAttribute(value) {
+      return escapeHtml(value).replace(/`/g, "&#096;");
+    }
+
+    async function fetchJson(url, options = {}) {
+      const response = await fetch(url, options);
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || `请求失败：HTTP ${response.status}`);
+      }
+      return payload;
+    }
+
+    function statusClass(status) {
+      if (status === "失败" || status === "需补采") return "failed";
+      if (status === "排队中") return "queued";
+      if (status === "分析中") return "running";
+      if (status === "待分析") return "pending";
+      if (String(status || "").includes("待处理")) return "warning";
+      return "";
+    }
+
+    function shotSourceKey(shot = {}) {
+      return String(
+        shot.sourcePlatform
+        || shot.source_platform
+        || shot.platform
+        || shot.captureContext
+        || shot.capture_context
+        || shot.sourceLabel
+        || shot.source_label
+        || shot.source
+        || ""
+      ).trim().toLowerCase().replace(/[-\s]+/g, "_");
+    }
+
+    function isTikTokDetailShot(shot = {}) {
+      const key = shotSourceKey(shot);
+      const label = String(shot.sourceDisplay || shot.sourceLabel || shot.source_label || shot.source || "").trim().toLowerCase();
+      return [
+        "tiktok",
+        "tiktok_detail",
+        "tiktok_video",
+        "tiktok_video_detail",
+        "tiktok_photo",
+        "tiktok_photo_detail"
+      ].includes(key) || /tiktok.*详情/.test(label);
+    }
+
+    function canAnalyzeShot(shot = {}) {
+      return Boolean(shot.videoPath) || (isTikTokDetailShot(shot) && Boolean(shot.sourceUrl || shot.source_url));
+    }
+
+    function shotWorkStatus(shot) {
+      const progressKey = String(shot.analysisProgress?.stageKey || "").toLowerCase();
+      if (progressKey === "interrupted") {
+        return { label: "分析停止", filterStatus: "分析停止", tone: "warning", showOverlay: true };
+      }
+      if (shot.analysisStatus === "queued") {
+        return { label: "排队中", filterStatus: "排队中", tone: "queued", showOverlay: true };
+      }
+      if (shot.analysisStatus === "running" && progressKey === "restart_requested") {
+        return { label: "恢复中", filterStatus: "分析中", tone: "running", showOverlay: true };
+      }
+      if (shot.status === "分析中" || shot.analysisStatus === "running") {
+        return { label: "分析中", filterStatus: "分析中", tone: "running", showOverlay: true };
+      }
+      if (shot.status === "失败" || shot.analysisStatus === "failed") {
+        return { label: "分析异常", filterStatus: "失败", tone: "failed", showOverlay: true };
+      }
+      if (shot.status === "需补采" || !canAnalyzeShot(shot)) {
+        return { label: "需补采", filterStatus: "需补采", tone: "failed", showOverlay: true };
+      }
+      if (shot.status === "待分析" || shot.analysisStatus === "pending") {
+        return { label: "待分析", filterStatus: "待分析", tone: "pending", showOverlay: false };
+      }
+      return null;
+    }
+
+    function issueBadge(shot) {
+      const status = shotWorkStatus(shot);
+      return status?.showOverlay ? status : null;
+    }
+
+    function shotFilterStatus(shot) {
+      return shotWorkStatus(shot)?.filterStatus || shot.status || "正常";
+    }
+
+    function analysisStatusTitle(shot) {
+      const progress = shot.analysisProgress && typeof shot.analysisProgress === "object" ? shot.analysisProgress : {};
+      const events = Array.isArray(shot.analysisEvents) ? shot.analysisEvents : [];
+      const latestEvent = events[events.length - 1] || {};
+      return progress.message || latestEvent.message || shot.analysisError || "";
+    }
+
+    function resetPage() {
+      state.page = 1;
+    }
+
+    function appFilterLabel(shot) {
+      return cleanAppName(shot) || "未识别 App";
+    }
+
+    function cleanAppName(shot) {
+      const value = shot?.app?.name || shot?.app?.fullName || shot.appDisplay || shot.appName || shot.rawBrandName || shot.brandName || "";
+      return String(value || "").split(/[:：]/)[0].trim() || value || "";
+    }
+
+    function appLogoUrl(shot) {
+      return shot?.app?.logoUrl || shot.logoUrl || shot.appLogo || "";
+    }
+
+    function shotIndustryLabel(shot) {
+      const category = String(shot?.category || "").trim();
+      if (category && category !== "全部行业") return category;
+      const raw = String(shot?.industryLabel || shot?.industryKey || shot?.industry_key || "").trim();
+      const key = raw.replace(/^label_/, "");
+      const industryLabels = {
+        "20100000000": "社交",
+        "20102000000": "教育/学习",
+        "20104000000": "图书/阅读"
+      };
+      return industryLabels[key] || category || key || "未识别行业";
+    }
+
+    function splitProjectTags(value) {
+      return Array.from(new Set(String(value || "")
+        .split(/[,，、\n]/)
+        .map((item) => item.trim())
+        .filter(Boolean)))
+        .slice(0, 16);
+    }
+
+    function renderAppOptions() {
+      const counts = new Map();
+      for (const shot of state.shots) {
+        const label = appFilterLabel(shot);
+        counts.set(label, (counts.get(label) || 0) + 1);
+      }
+      const options = Array.from(counts.entries()).sort((a, b) => a[0].localeCompare(b[0], "zh-Hans-CN"));
+      if (state.app !== "all" && !counts.has(state.app)) {
+        state.app = "all";
+      }
+      $("#app-filter").innerHTML = [
+        `<option value="all">全部 App · ${state.shots.length}</option>`,
+        ...options.map(([label, count]) => `<option value="${escapeAttribute(label)}" ${state.app === label ? "selected" : ""}>${escapeHtml(label)} · ${count}</option>`)
+      ].join("");
+    }
+
+    function filteredShots() {
+      const query = state.query.trim().toLowerCase();
+      return state.shots.filter((shot) => {
+        const shotProjectIds = Array.isArray(shot.projectIds) ? shot.projectIds : [];
+        const projectMatch = state.activeProject === "all"
+          || (state.activeProject === "unassigned" && !shotProjectIds.length)
+          || shotProjectIds.includes(state.activeProject);
+        if (!projectMatch) return false;
+        if (state.app !== "all" && appFilterLabel(shot) !== state.app) return false;
+        if (state.status !== "all" && shotFilterStatus(shot) !== state.status) return false;
+        if (!query) return true;
+        const haystack = [
+          shot.title,
+          shot.readableTitle,
+          shot.app?.name,
+          shot.app?.fullName,
+          shot.app?.bundleId,
+          shot.appId,
+          shot.appName,
+          shot.appDisplay,
+          shot.rawBrandName,
+          shot.brandName,
+          shot.category,
+          shot.regionLabel,
+          shot.sourceDisplay,
+          shot.storySummary,
+          shot.highlight,
+          shot.sourceItemId,
+          shot.appMatchQuery,
+          shot.topAds?.appMatchQuery,
+          Array.isArray(shot.projects) ? shot.projects.join(" ") : "",
+          Array.isArray(shot.projectNames) ? shot.projectNames.join(" ") : ""
+        ].join(" ").toLowerCase();
+        return haystack.includes(query);
+      });
+    }
+
+    function renderTabs() {
+      const projectTabsData = state.projects.map((project) => ({
+        id: project.id,
+        name: project.name,
+        count: state.shots.filter((shot) => Array.isArray(shot.projectIds) && shot.projectIds.includes(project.id)).length
+      })).filter((tab) => tab.count > 0);
+      const unassignedCount = state.shots.filter((shot) => !Array.isArray(shot.projectIds) || !shot.projectIds.length).length;
+      const tabs = [
+        { id: "all", name: "全部", count: state.shots.length },
+        ...projectTabsData,
+        ...(unassignedCount > 0 ? [{ id: "unassigned", name: "未归档", count: unassignedCount }] : [])
+      ];
+      if (!tabs.some((tab) => tab.id === state.activeProject)) {
+        state.activeProject = "all";
+        resetPage();
+      }
+      projectTabs.innerHTML = tabs.map((tab) => `
+        <button class="tab-button ${state.activeProject === tab.id ? "active" : ""}" type="button" data-project="${escapeAttribute(tab.id)}">
+          ${escapeHtml(tab.name)} · ${tab.count}
+        </button>
+      `).join("");
+    }
+
+    function renderAnalysisQueue() {
+      const queuedShots = state.shots.filter((shot) => shot.analysisStatus === "queued");
+      const pendingShots = state.shots.filter((shot) => shot.analysisStatus === "pending" && canAnalyzeShot(shot));
+      const runningShot = state.shots.find((shot) => shot.analysisStatus === "running");
+      const hasQueueWork = queuedShots.length > 0 || pendingShots.length > 0 || Boolean(runningShot);
+
+      analysisQueuePanel.hidden = !hasQueueWork;
+      if (!hasQueueWork) {
+        queuedCount.textContent = "0";
+        pendingCount.textContent = "0";
+        startAnalysisQueueButton.disabled = true;
+        startAnalysisQueueButton.textContent = "暂无待分析";
+        analysisQueueStatus.textContent = "";
+        currentAnalysisCard.classList.add("idle");
+        currentAnalysisCard.innerHTML = "";
+        return;
+      }
+
+      queuedCount.textContent = queuedShots.length;
+      pendingCount.textContent = pendingShots.length;
+      startAnalysisQueueButton.disabled = !pendingShots.length;
+      startAnalysisQueueButton.textContent = pendingShots.length ? `开始分析 ${pendingShots.length} 条` : "队列处理中";
+      if (pendingShots.length && analysisQueueStatus.textContent === "没有可加入队列的待分析素材。") {
+        analysisQueueStatus.textContent = "";
+      }
+
+      if (!runningShot) {
+        currentAnalysisCard.classList.add("idle");
+        currentAnalysisCard.innerHTML = `
+          <div class="current-analysis-body">
+            <span class="status-badge">空闲</span>
+            <p class="current-analysis-title">当前没有正在处理的视频</p>
+            <p class="current-analysis-meta">触发分析后，这里会显示正在处理的素材。</p>
+          </div>
+        `;
+        return;
+      }
+
+      const title = runningShot.readableTitle || runningShot.highlight || runningShot.title || runningShot.sourceAdId || "正在分析的 Shot";
+      const appDisplay = cleanAppName(runningShot) || "未识别 App";
+      const stage = runningShot.analysisProgress?.stageLabel || runningShot.analysisStage || "分析中";
+      const message = runningShot.analysisProgress?.message || analysisStatusTitle(runningShot) || "";
+      const poster = runningShot.posterPath || "";
+      const shotUrl = runningShot.shotUrl || `/shots/${runningShot.shotId}`;
+
+      currentAnalysisCard.classList.remove("idle");
+      currentAnalysisCard.innerHTML = `
+        <div class="current-analysis-cover">
+          ${poster ? `<img src="${escapeAttribute(poster)}" alt="" loading="lazy" />` : '<div class="current-analysis-empty-cover" aria-hidden="true"></div>'}
+        </div>
+        <div class="current-analysis-body">
+          <span class="status-badge running">${escapeHtml(stage)}</span>
+          <p class="current-analysis-title">${escapeHtml(title)}</p>
+          <p class="current-analysis-meta">${escapeHtml(appDisplay)}${message ? ` · ${escapeHtml(message)}` : ""}</p>
+          <a class="current-analysis-link" href="${escapeAttribute(shotUrl)}" target="_blank" rel="noreferrer">查看详情</a>
+        </div>
+      `;
+    }
+
+    function renderShots() {
+      const items = filteredShots();
+      const total = items.length;
+      const totalPages = Math.max(1, Math.ceil(total / state.pageSize));
+      if (state.page > totalPages) state.page = totalPages;
+      const start = (state.page - 1) * state.pageSize;
+      const pageItems = items.slice(start, start + state.pageSize);
+
+      shotSummary.textContent = `${total} 条素材 · 每页 ${state.pageSize}`;
+      pagerInfo.textContent = total ? `第 ${state.page} / ${totalPages} 页，显示 ${start + 1}-${start + pageItems.length}` : "暂无素材";
+      $("#prev-page").disabled = state.page <= 1;
+      $("#next-page").disabled = state.page >= totalPages;
+
+      if (!pageItems.length) {
+        shotGrid.innerHTML = '<div class="empty-state">当前筛选下没有 Shot。插件采集后选择项目入库，或用“手动导入”补一条。</div>';
+        return;
+      }
+
+      shotGrid.innerHTML = pageItems.map((shot, index) => {
+        const title = shot.analysis?.cardTitle || shot.readableTitle || shot.highlight || shot.title || cleanAppName(shot) || shot.rawBrandName || shot.brandName || shot.sourceAdId || "未命名 Shot";
+        const appDisplay = cleanAppName(shot) || "未识别 App";
+        const logoUrl = appLogoUrl(shot);
+        const industry = shotIndustryLabel(shot);
+        const shotUrl = shot.shotUrl || `/shots/${shot.shotId}`;
+        const poster = shotListPoster(shot);
+        const issue = issueBadge(shot);
+        return `
+          <a class="shot-card" href="${escapeAttribute(shotUrl)}" target="_blank" rel="noreferrer" aria-label="查看 ${escapeAttribute(title)}"${analysisStatusTitle(shot) ? ` title="${escapeAttribute(analysisStatusTitle(shot))}"` : ""}>
+            <div class="shot-media-wrap">
+              ${poster ? `<img class="shot-media" src="${escapeAttribute(poster)}" alt="" loading="lazy" />` : '<div class="shot-media shot-media-empty" aria-hidden="true"></div>'}
+              ${issue ? `<span class="issue-badge ${escapeAttribute(issue.tone)}">${escapeHtml(issue.label)}</span>` : ""}
+              <div class="shot-body">
+                <h3 class="shot-title">${escapeHtml(title)}</h3>
+                <div class="meta-row">
+                  <span class="meta-chip app-chip">${logoUrl ? `<img class="app-chip-icon" src="${escapeAttribute(logoUrl)}" alt="" loading="lazy" />` : `<span class="app-chip-icon" aria-hidden="true"></span>`}<span>${escapeHtml(appDisplay)}</span></span>
+                  <span class="meta-chip industry-chip"><span>${escapeHtml(industry)}</span></span>
+                </div>
+              </div>
+            </div>
+          </a>
+        `;
+      }).join("");
+    }
+
+    function shotListPoster(shot) {
+      const fallbackImagePaths = [
+        ...(Array.isArray(shot.imagePaths) ? shot.imagePaths : []),
+        ...(Array.isArray(shot.image_paths) ? shot.image_paths : []),
+        ...(Array.isArray(shot.analysisArtifacts?.imagePaths) ? shot.analysisArtifacts.imagePaths : [])
+      ].filter(Boolean);
+      const firstFramePath = shot.analysisArtifacts?.firstFramePath || shot.firstFramePath || shot.first_frame_path || "";
+      const isVideoShot = shot.mediaType !== "photo" && Boolean(shot.videoPath || shot.media?.videoPath);
+      return (isVideoShot && firstFramePath) || shot.posterPath || fallbackImagePaths[0] || "";
+    }
+
+    function renderManualProjectOptions() {
+      manualProject.innerHTML = state.projects.map((project) => `
+        <option value="${escapeAttribute(project.id)}">${escapeHtml(project.name)}</option>
+      `).join("");
+    }
+
+    function renderProjectEditor() {
+      projectEditorList.innerHTML = `
+        <div class="project-editor-header" aria-hidden="true">
+          <span>排序</span>
+          <span>项目名</span>
+          <span>Tags</span>
+          <span>状态</span>
+          <span>操作</span>
+        </div>
+      ` + state.projects.map((project) => `
+        <div class="project-editor-row" data-project-id="${escapeAttribute(project.id)}">
+          <div class="field">
+            <label>排序</label>
+            <input class="project-order" type="number" min="1" value="${Number(project.order) || 1}" />
+          </div>
+          <div class="field">
+            <label>项目名</label>
+            <input class="project-name" type="text" value="${escapeAttribute(project.name)}" />
+          </div>
+          <div class="field">
+            <label>Tags</label>
+            <input class="project-tags" type="text" value="${escapeAttribute((project.tags || []).join("，"))}" placeholder="听书，阅读，书摘" />
+          </div>
+          <div class="field">
+            <label>状态</label>
+            <select class="project-state">
+              <option value="active" ${project.status === "active" ? "selected" : ""}>启用</option>
+              <option value="archived" ${project.status === "archived" ? "selected" : ""}>归档</option>
+            </select>
+          </div>
+          <button class="icon-button remove-project" type="button" title="删除这一行">×</button>
+        </div>
+      `).join("");
+    }
+
+    function collectProjectRows() {
+      return Array.from(projectEditorList.querySelectorAll(".project-editor-row")).map((row, index) => ({
+        id: row.dataset.projectId || "",
+        name: row.querySelector(".project-name").value.trim(),
+        tags: splitProjectTags(row.querySelector(".project-tags")?.value || ""),
+        order: Number(row.querySelector(".project-order").value) || index + 1,
+        status: row.querySelector(".project-state").value
+      })).filter((project) => project.name);
+    }
+
+    function parseCapturePackage() {
+      const raw = capturePackageJson.value.trim();
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("采集包 JSON 必须是对象。");
+      }
+      return parsed;
+    }
+
+    function buildManualPayload() {
+      const project = state.projects.find((item) => item.id === manualProject.value);
+      const capturePackage = parseCapturePackage();
+      return {
+        type: "ad_shot_intake",
+        source_platform: "tiktok_creative_center",
+        capture_context: captureContext.value,
+        projectIds: manualProject.value ? [manualProject.value] : [],
+        target_app: manualTargetApp.value.trim() || project?.name || "未指定",
+        source_url: sourceUrl.value.trim(),
+        ...capturePackage
+      };
+    }
+
+    async function loadAll() {
+      const [projects, shots] = await Promise.all([
+        fetchJson("/api/ad-shot-projects"),
+        fetchJson("/api/ad-shots")
+      ]);
+      state.projects = projects;
+      state.shots = shots;
+      renderTabs();
+      renderAppOptions();
+      renderAnalysisQueue();
+      renderManualProjectOptions();
+      renderShots();
+      updateAnalysisPolling();
+    }
+
+    function updateAnalysisPolling() {
+      const hasRunning = state.shots.some((shot) => ["queued", "running"].includes(shot.analysisStatus));
+      if (!hasRunning && state.pollTimer) {
+        clearInterval(state.pollTimer);
+        state.pollTimer = null;
+        return;
+      }
+      if (hasRunning && !state.pollTimer) {
+        state.pollTimer = setInterval(refreshShotsOnly, 2000);
+      }
+    }
+
+    async function refreshShotsOnly() {
+      if (state.polling) return;
+      state.polling = true;
+      try {
+        state.shots = await fetchJson("/api/ad-shots");
+        renderTabs();
+        renderAppOptions();
+        renderAnalysisQueue();
+        renderShots();
+      } finally {
+        state.polling = false;
+        updateAnalysisPolling();
+      }
+    }
+
+    projectTabs.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-project]");
+      if (!button) return;
+      state.activeProject = button.dataset.project;
+      resetPage();
+      renderTabs();
+      renderShots();
+    });
+
+    $("#search-input").addEventListener("input", (event) => {
+      state.query = event.target.value;
+      resetPage();
+      renderShots();
+    });
+
+    $("#app-filter").addEventListener("change", (event) => {
+      state.app = event.target.value;
+      resetPage();
+      renderShots();
+    });
+
+    $("#status-filter").addEventListener("change", (event) => {
+      state.status = event.target.value;
+      resetPage();
+      renderShots();
+    });
+
+    $("#page-size").addEventListener("change", (event) => {
+      state.pageSize = Number(event.target.value) || 50;
+      resetPage();
+      renderShots();
+    });
+
+    $("#prev-page").addEventListener("click", () => {
+      state.page = Math.max(1, state.page - 1);
+      renderShots();
+    });
+
+    $("#next-page").addEventListener("click", () => {
+      state.page += 1;
+      renderShots();
+    });
+
+    startAnalysisQueueButton.addEventListener("click", async () => {
+      const pendingShots = state.shots.filter((shot) => shot.analysisStatus === "pending" && canAnalyzeShot(shot));
+      if (!pendingShots.length) {
+        analysisQueueStatus.textContent = "没有可加入队列的待分析素材。";
+        renderAnalysisQueue();
+        return;
+      }
+
+      startAnalysisQueueButton.disabled = true;
+      analysisQueueStatus.textContent = `正在加入队列：0 / ${pendingShots.length}`;
+      let queued = 0;
+      let failed = 0;
+      try {
+        for (const shot of pendingShots) {
+          try {
+            await fetchJson("/api/ad-shots/analyze", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ shotId: shot.shotId })
+            });
+            queued += 1;
+          } catch (error) {
+            failed += 1;
+            console.error("加入分析队列失败", shot.shotId, error);
+          }
+          analysisQueueStatus.textContent = `正在加入队列：${queued + failed} / ${pendingShots.length}`;
+        }
+        analysisQueueStatus.textContent = failed
+          ? `已加入 ${queued} 条，${failed} 条失败。`
+          : `已加入 ${queued} 条分析队列。`;
+        await loadAll();
+      } finally {
+        startAnalysisQueueButton.disabled = false;
+        renderAnalysisQueue();
+      }
+    });
+    function openProjectEditor() {
+      renderProjectEditor();
+      projectDialog.showModal();
+    }
+
+    $("#open-tab-project-editor").addEventListener("click", openProjectEditor);
+
+    $("#add-project-row").addEventListener("click", () => {
+      const row = document.createElement("div");
+      row.className = "project-editor-row";
+      row.dataset.projectId = "";
+      const nextOrder = projectEditorList.querySelectorAll(".project-editor-row").length + 1;
+      row.innerHTML = `
+        <div class="field"><label>排序</label><input class="project-order" type="number" min="1" value="${nextOrder}" /></div>
+        <div class="field"><label>项目名</label><input class="project-name" type="text" placeholder="新项目" /></div>
+        <div class="field"><label>Tags</label><input class="project-tags" type="text" placeholder="听书，阅读，书摘" /></div>
+        <div class="field"><label>状态</label><select class="project-state"><option value="active">启用</option><option value="archived">归档</option></select></div>
+        <button class="icon-button remove-project" type="button" title="删除这一行">×</button>
+      `;
+      projectEditorList.appendChild(row);
+      row.querySelector(".project-name").focus();
+    });
+
+    projectEditorList.addEventListener("click", (event) => {
+      const button = event.target.closest(".remove-project");
+      if (!button) return;
+      button.closest(".project-editor-row").remove();
+    });
+
+    $("#save-projects").addEventListener("click", async () => {
+      const projects = collectProjectRows();
+      if (!projects.length) {
+        projectStatus.textContent = "至少保留一个项目。";
+        return;
+      }
+      $("#save-projects").disabled = true;
+      projectStatus.textContent = "正在保存项目...";
+      try {
+        await fetchJson("/api/ad-shot-projects", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projects })
+        });
+        projectStatus.textContent = "项目已保存。";
+        projectDialog.close();
+        await loadAll();
+      } catch (error) {
+        projectStatus.textContent = error instanceof Error ? error.message : "保存失败。";
+      } finally {
+        $("#save-projects").disabled = false;
+      }
+    });
+
+    $("#open-manual-import").addEventListener("click", () => {
+      intakeStatus.textContent = "";
+      manualDialog.showModal();
+    });
+
+    $("#clear-manual").addEventListener("click", () => {
+      sourceUrl.value = "";
+      manualTargetApp.value = "";
+      capturePackageJson.value = "";
+      intakeStatus.textContent = "已清空输入。";
+    });
+
+    $("#queue-shot").addEventListener("click", async () => {
+      let payload;
+      try {
+        payload = buildManualPayload();
+      } catch (error) {
+        intakeStatus.textContent = error instanceof Error ? error.message : "采集包 JSON 无法解析。";
+        return;
+      }
+      if (!payload.source_url && !payload.page_html && !payload.pageHtml && !payload.video_url && !payload.videoUrl) {
+        intakeStatus.textContent = "先粘贴 Top Ads 详情页 URL，或粘贴包含 page_html / video_url 的采集包 JSON。";
+        sourceUrl.focus();
+        return;
+      }
+
+      $("#queue-shot").disabled = true;
+      intakeStatus.textContent = "正在导入 Shot...";
+      try {
+        const shot = await fetchJson("/api/ad-shots/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        intakeStatus.textContent = shot.duplicate ? `已存在：${shot.shotId}` : `导入成功：${shot.shotId}`;
+        await loadAll();
+      } catch (error) {
+        intakeStatus.textContent = error instanceof Error ? error.message : "导入失败。";
+      } finally {
+        $("#queue-shot").disabled = false;
+      }
+    });
+
+    loadAll().catch((error) => {
+      shotGrid.innerHTML = `<div class="empty-state">${escapeHtml(error instanceof Error ? error.message : "读取素材失败。")}</div>`;
+      shotSummary.textContent = "读取失败";
+    });
+  </script>
+</body>
+</html>

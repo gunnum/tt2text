@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>T2T 文章录入</title>
+  <link rel="stylesheet" href="/styles/base.css?v=20260616-layout-v1" />
+  <link rel="stylesheet" href="/styles/workspaces.css?v=20260616-layout-v1" />
+  <style>
+    .article-shell {
+      display: grid;
+      gap: 18px;
+    }
+
+    .article-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .surface-card {
+      display: grid;
+      gap: 14px;
+      padding: 18px;
+      background: rgba(255, 255, 255, 0.62);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+    }
+
+    .article-record-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .article-record-card {
+      display: grid;
+      gap: 10px;
+      padding: 16px;
+      border: 1px solid rgba(25, 23, 19, 0.1);
+      border-radius: 18px;
+      background: rgba(255, 250, 242, 0.78);
+    }
+
+    .article-record-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .article-record-head h3,
+    .surface-card h2,
+    .surface-card h3 {
+      margin: 0;
+    }
+
+    .article-record-app,
+    .selected-app-badge {
+      margin: 0;
+      color: var(--accent-strong);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .article-record-meta,
+    .article-record-copy {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .article-record-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 1080px) {
+      .article-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <nav class="top-link-nav" aria-label="站点导航">
+      <div class="brand-lockup">
+        <img class="brand-logo" src="/assets/t2t-logo.svg" width="140" height="40" alt="T2T" />
+        <p class="brand-subtitle">文章录入</p>
+      </div>
+      <div class="top-link-actions">
+        <a class="system-link" href="/">首页</a>
+        <a class="system-link" href="/ingest">录入数据</a>
+        <a class="system-link" href="/ingest/video">视频录入</a>
+      </div>
+    </nav>
+
+    <main class="article-shell">
+      <section class="panel" style="padding:20px;">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">Article Ingest</p>
+            <h1>文章录入</h1>
+            <p class="helper-text">这页已经接回旧首页里的文章录入能力：单篇文章录入、按 App 全网搜索导入、文章列表。</p>
+          </div>
+        </div>
+        <div class="chain">
+          <a class="chain-node" href="/ingest">返回录入数据</a>
+          <a class="chain-node" href="/article-view.html">文章阅读页</a>
+        </div>
+      </section>
+
+      <section class="article-grid">
+        <div class="surface-card">
+          <div class="app-library">
+            <div>
+              <p class="section-kicker">App Library</p>
+              <h2>先选 App，再录文章</h2>
+              <p class="helper-text">文章和视频共享同一套 App 库，方便后面统一归档。</p>
+            </div>
+            <div class="app-picker-body">
+              <div id="app-list" class="app-list"></div>
+              <button id="app-edit-toggle" type="button" class="app-edit-toggle">编辑</button>
+            </div>
+          </div>
+
+          <form id="article-form" class="convert-form">
+            <div>
+              <p class="section-kicker">Single URL</p>
+              <h3>单篇文章录入</h3>
+            </div>
+            <p id="selected-app-badge" class="selected-app-badge">当前 App：未选择</p>
+            <label for="article-url-input">文章链接</label>
+            <div class="input-row">
+              <input id="article-url-input" name="url" type="url" placeholder="https://..." />
+              <button type="submit">录入文章</button>
+            </div>
+            <p class="helper-text">会抓原始页面、提正文、图片和 markdown bundle。</p>
+          </form>
+
+          <section class="convert-form">
+            <div>
+              <p class="section-kicker">Search Import</p>
+              <h3>按 App 全网搜索导入</h3>
+            </div>
+            <div class="article-search-tools">
+              <div>
+                <p class="article-search-title">基于当前 App 名称搜索相关文章</p>
+                <p id="article-search-status" class="helper-text">可以直接录单篇文章，也可以按 App 做全网搜索导入。</p>
+              </div>
+              <select id="article-search-limit" class="article-search-limit">
+                <option value="10">10 篇</option>
+                <option value="20" selected>20 篇</option>
+                <option value="30">30 篇</option>
+                <option value="50">50 篇</option>
+                <option value="100">100 篇</option>
+              </select>
+              <button id="article-search-button" type="button">搜索并录入</button>
+            </div>
+          </section>
+        </div>
+
+        <aside class="surface-card">
+          <div>
+            <p class="section-kicker">Status</p>
+            <h2>录入状态</h2>
+          </div>
+          <div id="status" class="status-card">准备中...</div>
+
+          <div>
+            <p class="section-kicker">Library</p>
+            <h2>文章记录</h2>
+            <p class="helper-text">按当前 App 过滤，方便确认录入是否成功。</p>
+          </div>
+          <div id="article-list" class="article-record-list"></div>
+        </aside>
+      </section>
+    </main>
+  </div>
+  <div id="toast" class="toast" hidden></div>
+  <script type="module" src="/js/ingest-article.js"></script>
+  <script type="module" src="/js/core/breadcrumb.js"></script>
+</body>
+</html>

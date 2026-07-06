@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>视频详情</title>
+  <link rel="stylesheet" href="/styles/base.css?v=20260616-layout-v1" />
+  <link rel="stylesheet" href="/styles/workspaces.css?v=20260616-layout-v1" />
+  <style id="video-player-shared-styles"></style>
+  <style>
+    .unified-video-shell { display:grid; gap:16px; }
+    .unified-video-layout { display:grid; grid-template-columns:minmax(280px, 420px) minmax(0, 1fr); gap:16px; padding:18px; align-items:start; }
+    .unified-video-media { position:sticky; top:24px; z-index:3; display:grid; gap:12px; align-content:start; align-self:start; }
+    .unified-video-stage { position:relative; overflow:hidden; border-radius:22px; background:#111; box-shadow:0 18px 45px rgba(31,28,24,.14); }
+    .unified-video-stage video,
+    .unified-video-stage img { display:block; width:100%; max-height:78vh; object-fit:cover; background:#111; }
+    .unified-video-stage img { aspect-ratio:9 / 16; }
+    .unified-video-actions { position:relative; z-index:1; display:flex; justify-content:center; gap:10px; flex-wrap:wrap; }
+    .icon-action { display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border:1px solid rgba(13,111,91,.18); border-radius:999px; background:rgba(255,255,255,.78); color:#095b4b; box-shadow:0 10px 24px rgba(54,41,18,.08); font-size:16px; line-height:1; text-decoration:none; cursor:pointer; }
+    .icon-action.danger { border-color:rgba(139,43,29,.18); color:#8b2b1d; }
+    .unified-video-side { display:grid; gap:12px; align-content:start; }
+    .unified-hero { display:grid; gap:12px; padding:20px; }
+    .unified-hero h1 { margin:0; font-size:clamp(25px, 3vw, 34px); line-height:1.18; }
+    .unified-tags { display:flex; flex-wrap:wrap; gap:8px; }
+    .unified-tag { display:inline-flex; align-items:center; min-height:30px; padding:0 10px; border:1px solid rgba(13,111,91,.12); border-radius:999px; background:rgba(232,244,240,.82); color:#095b4b; font-size:12px; font-weight:900; }
+    .detail-card { display:grid; gap:12px; padding:16px; }
+    .detail-card h2 { margin:0; font-size:18px; line-height:1.25; }
+    .detail-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
+    .metric-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
+    .detail-tile,
+    .analysis-item { border:1px solid rgba(45,35,23,.10); border-radius:14px; background:rgba(255,251,245,.72); padding:12px; }
+    .detail-tile span,
+    .metric-tile span { display:block; color:var(--muted); font-size:12px; font-weight:900; }
+    .detail-tile b,
+    .metric-tile b { display:block; margin-top:4px; color:var(--ink); overflow-wrap:anywhere; }
+    .metric-tile { min-height:82px; border:1px solid rgba(45,35,23,.08); border-radius:14px; background:rgba(255,251,245,.86); padding:14px 16px; display:flex; flex-direction:column; justify-content:center; gap:8px; }
+    .metric-tile b { font-size:26px; line-height:1; }
+    .analysis-stack { display:grid; gap:10px; }
+    .analysis-item b { display:block; margin-bottom:4px; }
+    .analysis-item strong { display:block; margin-bottom:6px; color:var(--ink); line-height:1.55; }
+    .analysis-item p,
+    .analysis-item li,
+    .detail-card p { margin:0; color:#5f554b; line-height:1.7; }
+    .analysis-item ol,
+    .comment-list { margin:8px 0 0; padding-left:21px; color:#5f554b; line-height:1.68; }
+    .comment-list { display:grid; gap:8px; padding-left:0; list-style:none; }
+    .comment-list li { border:1px solid rgba(45,35,23,.10); border-radius:14px; background:rgba(255,251,245,.72); padding:12px; }
+    .comment-list small { display:block; margin-top:6px; color:var(--muted); }
+    .status-pill { display:inline-flex; align-items:center; min-height:28px; width:fit-content; padding:0 10px; border-radius:999px; background:#e7f4ec; color:#095b4b; font-size:12px; font-weight:900; }
+    .status-pill.running { background:#e7f0f8; color:#1f5c99; }
+    .status-pill.failed { background:#ffe9e4; color:#8b2b1d; }
+    @media (max-width: 900px) {
+      .unified-video-layout { grid-template-columns:1fr; padding:14px; }
+      .unified-video-media,
+      .unified-video-stage { position:static; }
+      .detail-grid,
+      .metric-grid { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <nav class="top-link-nav" aria-label="站点导航">
+      <div class="brand-lockup">
+        <img class="brand-logo" src="/assets/t2t-logo.svg" width="140" height="40" alt="T2T" />
+        <p class="brand-subtitle">视频详情</p>
+      </div>
+    </nav>
+    <nav id="video-breadcrumb" class="breadcrumb" aria-label="面包屑">
+      <a href="/">首页</a>
+      <span aria-hidden="true">/</span>
+      <span>视频详情</span>
+    </nav>
+    <main id="video-detail" class="unified-video-shell">
+      <section class="panel detail-card">
+        <p class="helper-text">正在读取视频...</p>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="/js/videos/detail.js"></script>
+  <script type="module" src="/js/core/breadcrumb.js"></script>
+  <script type="module">
+    import { buildVideoPlayerStyles } from "/js/core/video-player.js";
+    const styleEl = document.querySelector("#video-player-shared-styles");
+    if (styleEl) styleEl.textContent = buildVideoPlayerStyles();
+  </script>
+</body>
+</html>

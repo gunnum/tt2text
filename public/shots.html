@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>T2T Shots</title>
+  <link rel="stylesheet" href="/styles/base.css?v=20260616-layout-v1" />
+  <link rel="stylesheet" href="/styles/workspaces.css?v=20260616-layout-v1" />
+  <style id="video-player-shared-styles"></style>
+  <style>
+    .shots-shell { display:grid; gap:16px; }
+    .shots-head { display:flex; justify-content:space-between; align-items:flex-end; gap:14px; flex-wrap:wrap; }
+    .shots-head h1, .shots-head p { margin:0; }
+    .shots-head p { color:var(--muted); line-height:1.6; }
+    .analysis-queue-card { min-width:240px; border:1px solid rgba(13,111,91,.18); border-radius:8px; background:#fff; padding:12px; display:grid; gap:8px; text-align:left; color:inherit; font:inherit; cursor:pointer; }
+    .analysis-queue-card:hover { border-color:rgba(13,111,91,.38); box-shadow:0 10px 26px rgba(54,41,18,.08); }
+    .analysis-queue-card strong { display:block; color:#111827; font-size:18px; line-height:1.2; }
+    .analysis-queue-card span { display:block; color:var(--muted); font-size:12px; line-height:1.45; }
+    .analysis-queue-card.is-active strong { color:var(--accent-strong); }
+    .analysis-queue-card.is-idle { opacity:.82; }
+    .tabs-section { padding:0; background:transparent; border:0; box-shadow:none; }
+    .shot-tabs { display:flex; gap:8px; flex-wrap:wrap; }
+    .shot-tab { min-height:36px; border:1px solid rgba(25,23,19,.13); border-radius:14px; padding:0 12px; background:rgba(255,255,255,.82); color:var(--ink); font:inherit; font-size:13px; font-weight:850; cursor:pointer; }
+    .shot-tab[aria-selected="true"] { border-color:rgba(13,111,91,.36); background:rgba(13,111,91,.1); color:var(--accent-strong); }
+    .report-card { border:1px solid rgba(13,111,91,.18); border-radius:8px; background:#fff; padding:14px; color:inherit; text-decoration:none; display:grid; gap:10px; }
+    .report-card:hover { border-color:rgba(13,111,91,.38); box-shadow:0 12px 30px rgba(54,41,18,.09); }
+    .report-card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+    .report-card h2, .report-card p { margin:0; }
+    .report-card p { color:var(--muted); line-height:1.6; }
+    .report-arrow { width:34px; height:34px; display:grid; place-items:center; border:1px solid var(--line); border-radius:999px; color:var(--accent-strong); background:#f8fafc; flex:0 0 auto; }
+    .report-arrow svg { width:18px; height:18px; }
+    .report-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+    .report-metrics span { border:1px solid var(--line); border-radius:8px; padding:8px; background:#f8fafc; color:var(--muted); font-size:12px; }
+    .report-metrics b { display:block; color:#111827; font-size:18px; line-height:1.2; }
+    .mapped-apps { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .mapped-app-link { position:relative; width:42px; height:42px; padding:0; border:1px solid var(--line); border-radius:12px; background:#fff; display:grid; place-items:center; overflow:visible; color:var(--accent-strong); text-decoration:none; font:inherit; font-size:13px; font-weight:900; cursor:pointer; transition:transform 140ms ease,border-color 140ms ease,box-shadow 140ms ease,background 140ms ease; }
+    .mapped-app-link:hover { border-color:rgba(13,111,91,.36); box-shadow:0 8px 20px rgba(54,41,18,.08); }
+    .mapped-app-link[aria-pressed="true"] { transform:translateY(-2px); border:3px solid #0d6f5b; background:rgba(13,111,91,.14); box-shadow:0 0 0 4px rgba(13,111,91,.14), 0 12px 26px rgba(13,111,91,.2); }
+    .mapped-app-link[aria-pressed="true"]::after { content:"✓"; position:absolute; right:-7px; bottom:-7px; width:18px; height:18px; display:grid; place-items:center; border:2px solid #fff; border-radius:999px; background:#0d6f5b; color:#fff; font-size:12px; font-weight:1000; line-height:1; box-shadow:0 4px 10px rgba(13,111,91,.24); }
+    .mapped-app-all { background:rgba(255,255,255,.9); }
+    .mapped-app-link img { width:100%; height:100%; object-fit:cover; display:block; border-radius:10px; }
+    .mapped-app-link[aria-pressed="true"] img { filter:saturate(1.08) contrast(1.04); }
+    .shots-waterfall { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:14px; align-items:start; }
+    .shots-waterfall-column { display:grid; gap:14px; align-content:start; min-width:0; }
+    .shot-player-dialog { width:min(420px, calc(100vw - 28px)); border:0; border-radius:18px; padding:0; background:transparent; }
+    .shot-player-dialog::backdrop { background:rgba(12,20,18,.58); }
+    .shot-player-panel { display:grid; gap:0; padding:14px; border:1px solid rgba(255,255,255,.18); border-radius:18px; background:#0f1115; box-shadow:0 24px 56px rgba(0,0,0,.34); }
+    .shot-player-stage { position:relative; overflow:hidden; border-radius:14px 14px 0 0; background:#000; }
+    .shot-player-stage video,
+    .shot-player-stage img { display:block; width:100%; max-height:min(78vh, 760px); object-fit:contain; background:#000; }
+    .shot-player-meta-bar { display:grid; gap:4px; padding:32px 14px 14px; border-radius:0 0 14px 14px; background:#0f1115; color:#fff; }
+    .shot-player-meta-bar a,
+    .shot-player-meta-bar p { margin:0; }
+    .shot-player-title-link { color:inherit; text-decoration:none; font-size:16px; font-weight:700; line-height:1.35; }
+    .shot-player-title-link:hover { color:rgba(255,255,255,.82); }
+    .shot-player-title-link.is-disabled { pointer-events:none; cursor:default; }
+    .shot-player-meta-bar p { color:rgba(255,255,255,.72); font-size:12px; line-height:1.45; }
+    .analysis-queue-dialog { width:min(680px, calc(100vw - 28px)); border:0; border-radius:18px; padding:0; background:transparent; }
+    .analysis-queue-dialog::backdrop { background:rgba(12,20,18,.46); }
+    .analysis-queue-card-panel { display:grid; gap:14px; max-height:min(82vh, 760px); overflow:auto; padding:16px; border:1px solid rgba(255,255,255,.28); border-radius:18px; background:#fffaf2; box-shadow:var(--shadow); }
+    .analysis-queue-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .analysis-queue-title { display:grid; gap:4px; min-width:0; }
+    .analysis-queue-title h2, .analysis-queue-title p { margin:0; }
+    .analysis-queue-title h2 { font-size:20px; line-height:1.25; }
+    .analysis-queue-title p { color:var(--muted); font-size:13px; line-height:1.45; }
+    .analysis-queue-close { width:36px; height:36px; border:1px solid rgba(13,111,91,.16); border-radius:999px; background:rgba(255,255,255,.72); color:var(--accent-strong); cursor:pointer; font-size:22px; line-height:1; flex:0 0 auto; }
+    .analysis-queue-list { display:grid; gap:10px; }
+    .analysis-queue-item { border:1px solid var(--line); border-radius:8px; background:#fff; padding:12px; display:grid; gap:9px; }
+    .analysis-queue-item-top { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+    .analysis-queue-item h3 { margin:0; font-size:15px; line-height:1.35; }
+    .analysis-queue-item h3 a { color:inherit; text-decoration:none; }
+    .analysis-queue-item h3 a:hover { color:var(--accent-strong); }
+    .analysis-queue-meta, .analysis-queue-message { margin:0; color:var(--muted); font-size:12px; line-height:1.5; }
+    .analysis-queue-status { border-radius:999px; padding:5px 8px; font-size:12px; font-weight:900; white-space:nowrap; }
+    .analysis-queue-status.running { background:#dbeafe; color:#1d4ed8; }
+    .analysis-queue-status.queued { background:#dcfce7; color:#166534; }
+    .analysis-progress-meta { display:flex; align-items:center; justify-content:space-between; gap:10px; color:var(--muted); font-size:12px; line-height:1.4; }
+    .analysis-progress-step { color:#111827; font-weight:900; }
+    .analysis-progress-label { min-width:0; text-align:right; }
+    .analysis-progress-track { height:8px; overflow:hidden; border-radius:999px; background:#eef2f7; }
+    .analysis-progress-bar { height:100%; min-width:8px; border-radius:999px; background:#0d6f5b; transition:width 180ms ease; }
+    @media (max-width: 1180px) { .shots-waterfall { grid-template-columns:repeat(3, minmax(0, 1fr)); } }
+    @media (max-width: 820px) {
+      .shots-waterfall { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+      .report-metrics { grid-template-columns:1fr; }
+    }
+    @media (max-width: 540px) { .shots-waterfall { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <nav class="top-link-nav" aria-label="站点导航">
+      <a class="brand-lockup" href="/" aria-label="返回首页">
+        <img class="brand-logo" src="/assets/t2t-logo.svg" width="140" height="40" alt="T2T" />
+      </a>
+      <div class="top-link-actions">
+        <a class="system-link" href="/">首页</a>
+        <a class="system-link" href="/reports">分析输出</a>
+      </div>
+    </nav>
+    <main class="shots-shell">
+      <section class="surface section">
+        <div class="shots-head">
+          <div>
+            <h1>Shots</h1>
+          </div>
+          <button id="analysis-queue-card" class="analysis-queue-card is-idle" type="button">
+            <strong>当前没有分析任务</strong>
+            <span>点击查看分析队列</span>
+          </button>
+        </div>
+      </section>
+      <section class="tabs-section">
+        <div id="shot-tabs" class="shot-tabs" role="tablist" aria-label="App 类别"></div>
+      </section>
+      <section id="report-card-slot" class="surface section"></section>
+      <section id="mapped-apps-slot" class="surface section"></section>
+      <section class="surface section">
+        <div id="shots-waterfall" class="shots-waterfall"></div>
+      </section>
+    </main>
+  </div>
+  <dialog id="analysis-queue-dialog" class="analysis-queue-dialog">
+    <div class="analysis-queue-card-panel">
+      <div class="analysis-queue-head">
+        <div class="analysis-queue-title">
+          <h2>分析队列</h2>
+          <p id="analysis-queue-summary">当前没有分析任务。</p>
+        </div>
+        <button id="analysis-queue-close" class="analysis-queue-close" type="button" aria-label="关闭">×</button>
+      </div>
+      <div id="analysis-queue-list" class="analysis-queue-list"></div>
+    </div>
+  </dialog>
+  <dialog id="shot-player-dialog" class="shot-player-dialog">
+    <div class="shot-player-panel">
+      <div id="shot-player-stage" class="shot-player-stage"></div>
+      <div class="shot-player-meta-bar">
+        <a id="shot-player-title-link" class="shot-player-title-link is-disabled" href="#">
+          <span id="shot-player-title">视频预览</span>
+        </a>
+        <p id="shot-player-meta"></p>
+      </div>
+    </div>
+  </dialog>
+  <script type="module" src="/js/shots.js?v=20260703-analysis-steps"></script>
+  <script type="module">
+    import { buildVideoPlayerStyles } from "/js/core/video-player.js";
+    const styleEl = document.querySelector("#video-player-shared-styles");
+    if (styleEl) styleEl.textContent = buildVideoPlayerStyles();
+  </script>
+</body>
+</html>

@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>T2T Agent 底层系统</title>
+  <style>
+    :root {
+      --bg: #f3efe6;
+      --paper: rgba(255, 251, 245, .88);
+      --panel: rgba(255, 255, 255, .72);
+      --ink: #1f1c18;
+      --muted: #6c6257;
+      --line: rgba(45, 35, 23, .14);
+      --line-strong: rgba(13, 111, 91, .28);
+      --accent: #0e7c66;
+      --accent-strong: #095b4b;
+      --blue: #1f5c99;
+      --blue-bg: #e7f0f8;
+      --green: #16794c;
+      --green-bg: #e7f4ec;
+      --amber: #a45d12;
+      --amber-bg: #fff1d8;
+      --red: #b42335;
+      --red-bg: #ffe8eb;
+      --violet: #6c4aa0;
+      --violet-bg: #f1eafa;
+      --shadow: 0 18px 60px rgba(54, 41, 18, .10);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, .75), transparent 28%),
+        linear-gradient(135deg, #e8f2ef 0%, #f4ead9 52%, #efe6da 100%);
+      font-family: "SF Pro SC", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif;
+      line-height: 1.62;
+    }
+
+    a { color: var(--accent-strong); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+
+    code {
+      padding: 2px 5px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .72);
+      color: #4a3824;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .92em;
+    }
+
+    .page { width: min(1380px, calc(100vw - 32px)); margin: 28px auto 56px; }
+
+    .top-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 10px;
+      padding: 12px 14px;
+      border: 1px solid rgba(255, 255, 255, .62);
+      border-radius: 20px;
+      background: rgba(255, 251, 245, .76);
+      box-shadow: 0 10px 30px rgba(54, 41, 18, .08);
+      backdrop-filter: blur(12px);
+    }
+
+    .top-nav b {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .top-nav span {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .breadcrumb a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 0 10px;
+      border: 1px solid rgba(13, 111, 91, .14);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .58);
+      color: var(--accent-strong);
+      text-decoration: none;
+    }
+
+    .breadcrumb span[aria-hidden="true"] {
+      color: rgba(108, 98, 87, .68);
+    }
+
+    .hero {
+      border: 1px solid rgba(255, 255, 255, .62);
+      border-radius: 28px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+      padding: 32px 34px;
+      margin-bottom: 20px;
+      backdrop-filter: blur(14px);
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--accent-strong);
+      text-transform: uppercase;
+      letter-spacing: .16em;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 1020px;
+      font-size: clamp(36px, 5vw, 64px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      margin: 16px 0 0;
+      max-width: 980px;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .map-shell {
+      position: relative;
+      border: 1px solid rgba(255, 255, 255, .62);
+      border-radius: 28px;
+      background: rgba(255, 251, 245, .72);
+      box-shadow: var(--shadow);
+      padding: 28px;
+      overflow-x: auto;
+    }
+
+    .mind-map {
+      min-width: 1180px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .tree {
+      display: grid;
+      gap: 18px;
+    }
+
+    .branch {
+      position: relative;
+      display: grid;
+      grid-template-columns: 230px minmax(0, 1fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .branch::before {
+      content: "";
+      position: absolute;
+      left: 220px;
+      top: 30px;
+      width: 18px;
+      height: 2px;
+      background: var(--line-strong);
+    }
+
+    .branch-title {
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--panel);
+      padding: 16px;
+    }
+
+    .branch-title h2 { margin: 0; font-size: 22px; line-height: 1.25; }
+    .branch-title p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+
+    .leaf-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .leaf-list { display: grid; gap: 10px; }
+
+    .leaf {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, .72);
+      padding: 14px;
+    }
+
+    .leaf-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 7px;
+    }
+
+    .leaf h3 { margin: 0; font-size: 17px; line-height: 1.3; }
+    .leaf p { margin: 0; color: #544a40; font-size: 14px; }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 24px;
+      padding: 0 8px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      white-space: nowrap;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .ready { color: var(--green); background: var(--green-bg); border-color: rgba(22, 121, 76, .22); }
+    .dev { color: var(--red); background: var(--red-bg); border-color: rgba(180, 35, 53, .20); }
+    .sop { color: var(--violet); background: var(--violet-bg); border-color: rgba(108, 74, 160, .22); }
+    .mixed { color: var(--amber); background: var(--amber-bg); border-color: rgba(164, 93, 18, .22); }
+    .view { color: var(--blue); background: var(--blue-bg); border-color: rgba(31, 92, 153, .18); }
+
+    .chain {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(150px, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .chain-step {
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, .72);
+      padding: 14px;
+      min-height: 122px;
+    }
+
+    .chain-step:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      right: -8px;
+      top: 50%;
+      width: 8px;
+      height: 2px;
+      background: var(--line-strong);
+    }
+
+    .chain-step b { display: block; margin-bottom: 6px; }
+    .chain-step span { color: var(--muted); font-size: 13px; }
+
+    .note {
+      margin-top: 18px;
+      border: 1px solid rgba(31, 92, 153, .16);
+      border-left: 4px solid var(--blue);
+      border-radius: 18px;
+      background: var(--blue-bg);
+      padding: 16px 18px;
+      color: #31495f;
+    }
+
+    @media (max-width: 900px) {
+      .page { width: min(100vw - 22px, 1380px); margin-top: 18px; }
+      .hero, .map-shell { padding: 18px; border-radius: 22px; }
+      .mind-map { min-width: 0; }
+      .branch { grid-template-columns: 1fr; }
+      .branch::before { display: none; }
+      .leaf-grid { grid-template-columns: 1fr; }
+      .chain { grid-template-columns: 1fr; }
+      .chain-step:not(:last-child)::after { display: none; }
+      h1 { font-size: 36px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <nav class="top-nav" aria-label="页面导航">
+      <b>T2T</b>
+      <span>底层系统</span>
+    </nav>
+
+    <nav class="breadcrumb" aria-label="面包屑">
+      <a href="/">资料库</a>
+      <span aria-hidden="true">/</span>
+      <span>底层系统</span>
+    </nav>
+
+    <section class="hero">
+      <p class="eyebrow">T2T System Tree</p>
+      <h1>报告生产不是即时问答，而是一棵持续沉淀的分析树</h1>
+      <p class="lead">素材进入 T2T 后，应该自动完成解析和标准分析；稳定、有 schema、可复用的结论要沉淀入库，临时探索只在页面展示。这个脑图用树状结构重新梳理底层系统。</p>
+    </section>
+
+    <section class="map-shell" aria-label="T2T 底层系统脑图">
+      <div class="mind-map">
+        <div class="tree">
+          <section class="branch">
+            <div class="branch-title">
+              <h2>主干流程</h2>
+              <p>不是点一次 LLM，而是入库后进入标准流水线。</p>
+            </div>
+            <div>
+              <div class="chain">
+                <div class="chain-step"><b>采集/上传</b><span>App、TikTok、文章、Sensor Tower、评论、截图等进入系统。</span></div>
+                <div class="chain-step"><b>原始素材入库</b><span>保留可追溯原文、文件、链接、截图、CSV。</span></div>
+                <div class="chain-step"><b>结构化解析</b><span>抽取字段、路径、指标、转写、翻译、评论行。</span></div>
+                <div class="chain-step"><b>LLM 标准分析</b><span>按固定 schema 生成可复用中间结论。</span></div>
+                <div class="chain-step"><b>结论沉淀</b><span>稳定结论入库，带来源、prompt 版本和模型版本。</span></div>
+                <div class="chain-step"><b>报告调用</b><span>报告从素材层和分析层调用证据，不重复临时分析。</span></div>
+              </div>
+              <div class="note"><b>核心原则：</b>入库后的标准分析不应该只是网页上的一次性展示；只要结论稳定、可复用、能追溯来源，就应该成为系统资产。</div>
+            </div>
+          </section>
+
+          <section class="branch">
+            <div class="branch-title">
+              <h2>素材层</h2>
+              <p>所有原始材料和解析前证据，必须可追溯。</p>
+            </div>
+            <div class="leaf-grid">
+              <article class="leaf"><div class="leaf-head"><h3>App 档案</h3><span class="status ready">Ready</span></div><p>App Store 链接、app id、名称、logo、bundle id、发行商。</p></article>
+              <article class="leaf"><div class="leaf-head"><h3>TikTok 视频/图集</h3><span class="status ready">Ready</span></div><p>链接、作者、标题、互动数据、媒体文件、首帧、抽帧。</p></article>
+              <article class="leaf"><div class="leaf-head"><h3>文章 Bundle</h3><span class="status ready">Ready</span></div><p>raw.html、clean.md、brief.md、manifest、图片资产。</p></article>
+              <article class="leaf"><div class="leaf-head"><h3>Sensor Tower</h3><span class="status ready">Ready</span></div><p>Overview、CSV、下载、收入、使用、留存、评论等。</p></article>
+              <article class="leaf"><div class="leaf-head"><h3>产品体验材料</h3><span class="status sop">写 SOP</span></div><p>截图、录屏、paywall、真实路径、失败场景、手感判断。</p></article>
+              <article class="leaf"><div class="leaf-head"><h3>投放/版本材料</h3><span class="status mixed">需求 + SOP</span></div><p>广告库、素材截图、版本更新、活动节点、发布时间线。</p></article>
+            </div>
+          </section>
+
+          <section class="branch">
+            <div class="branch-title">
+              <h2>解析层</h2>
+              <p>把素材变成可查、可关联、可复用的数据。</p>
+            </div>
+            <div class="leaf-grid">
+              <article class="leaf"><div class="leaf-head"><h3>视频转写/翻译</h3><span class="status ready">Ready</span></div><p>音频转写、中文翻译、视觉摘要、相关性初判。</p></article>
+              <article class="leaf"><div class="leaf-head"><h3>文章清洗</h3><span class="status ready">Ready</span></div><p>正文顺序、图片、核心观点、媒体元数据。</p></article>
+              <article class="leaf"><div class="leaf-head"><h3>CSV 结构化</h3><span class="status ready">Ready</span></div><p>Sensor Tower 行级数据入库，并生成国家市场/评论视图。</p></article>
+              <article class="leaf"><div class="leaf-head"><h3>评论解析</h3><span class="status dev">写需求</span></div><p>TikTok 评论深采和二级回复仍需更稳定的采集与诊断。</p></article>
+            </div>
+          </section>
+
+          <section class="branch">
+            <div class="branch-title">
+              <h2>标准分析层</h2>
+              <p>入库后自动跑，不依赖用户每次临时发问。</p>
+            </div>
+            <div class="leaf-grid">
+              <article class="leaf"><div class="leaf-head"><h3>TikTok 内容分析</h3><span class="status dev">写需求</span></div><p>hook 类型、内容类型、产品展示方式、用户痛点、评论追问。</p></article>
+              <article class="leaf"><div class="leaf-head"><h3>文章观点分析</h3><span class="status dev">写需求</span></div><p>核心观点、公司背景、品类判断、竞品提及、可引用证据。</p></article>
+              <article class="leaf"><div class="leaf-head"><h3>市场数据分析</h3><span class="status dev">写需求</span></div><p>趋势拐点、国家分工、RPD、收入/下载错位、评论差异。</p></article>
+              <article class="leaf"><div class="leaf-head"><h3>体验证据分析</h3><span class="status sop">先 SOP</span></div><p>产品路径、摩擦点、付费触发、体验结论先由人按 SOP 记录。</p></article>
+            </div>
+          </section>
+
+          <section class="branch">
+            <div class="branch-title">
+              <h2>沉淀策略</h2>
+              <p>不是所有 LLM 输出都该入库，要按复用价值分层。</p>
+            </div>
+            <div class="leaf-list">
+              <article class="leaf"><div class="leaf-head"><h3>原始素材层</h3><span class="status ready">必须入库</span></div><p>视频、转写、文章正文、CSV、评论、截图路径、来源链接。它们是所有判断的证据底座。</p></article>
+              <article class="leaf"><div class="leaf-head"><h3>标准分析层</h3><span class="status dev">应该入库</span></div><p>固定 schema 的 LLM 结论要入库：hook、主题、痛点、风险、国家分工、文章观点等，并保留来源和版本。</p></article>
+              <article class="leaf"><div class="leaf-head"><h3>临时探索层</h3><span class="status view">只展示</span></div><p>一次性追问、口吻润色、没有证据引用的临时想法，不污染数据库，除非人工确认转为标准结论。</p></article>
+            </div>
+          </section>
+
+          <section class="branch">
+            <div class="branch-title">
+              <h2>能力状态</h2>
+              <p>这棵树上的节点怎么推进。</p>
+            </div>
+            <div class="leaf-grid">
+              <article class="leaf"><div class="leaf-head"><h3>Ready</h3><span class="status ready">可维护</span></div><p>素材采集、文章清洗、视频处理、Sensor Tower、SQLite、Agent 运维。</p></article>
+              <article class="leaf"><div class="leaf-head"><h3>写需求</h3><span class="status dev">开发</span></div><p>标准分析入库、报告项目状态、图表生成、Google Play 评论、版本时间线。</p></article>
+              <article class="leaf"><div class="leaf-head"><h3>写 SOP</h3><span class="status sop">人工流程</span></div><p>产品体验、竞品确认、发布边界、访谈/社区材料。</p></article>
+              <article class="leaf"><div class="leaf-head"><h3>需求 + SOP</h3><span class="status mixed">先拆边界</span></div><p>竞品同口径包、paywall 档案、广告库/投放素材。</p></article>
+            </div>
+          </section>
+
+          <section class="branch">
+            <div class="branch-title">
+              <h2>下一步建设</h2>
+              <p>先把分析结果沉淀规则定下来，再开发入口。</p>
+            </div>
+            <div class="leaf-list">
+              <article class="leaf"><div class="leaf-head"><h3>1. 定标准分析 schema</h3><span class="status dev">写需求</span></div><p>为视频、文章、评论、Sensor Tower、体验材料分别定义分析字段、来源引用和模型版本。</p></article>
+              <article class="leaf"><div class="leaf-head"><h3>2. 建分析结果表</h3><span class="status dev">写需求</span></div><p>把标准分析结论和原始素材关联起来，允许人工确认、覆盖、废弃。</p></article>
+              <article class="leaf"><div class="leaf-head"><h3>3. 写产品体验 SOP</h3><span class="status sop">SOP</span></div><p>先让人按固定流程补第一手体验材料，再决定哪些字段产品化。</p></article>
+              <article class="leaf"><div class="leaf-head"><h3>4. 做报告项目面板</h3><span class="status dev">写需求</span></div><p>按目标 app 显示素材层、分析层、缺口、SOP 状态和报告草稿。</p></article>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

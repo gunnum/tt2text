@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>T2T SensorTower 录入</title>
+  <link rel="stylesheet" href="/styles/base.css?v=20260616-layout-v1" />
+  <link rel="stylesheet" href="/styles/workspaces.css?v=20260616-layout-v1" />
+  <style>
+    .sensor-shell {
+      display: grid;
+      gap: 18px;
+    }
+
+    .sensor-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .surface-card {
+      display: grid;
+      gap: 14px;
+      padding: 18px;
+      background: rgba(255, 255, 255, 0.62);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+    }
+
+    .surface-card h2,
+    .surface-card h3 {
+      margin: 0;
+    }
+
+    .sensor-record-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .sensor-record-card,
+    .plugin-log-card {
+      display: grid;
+      gap: 10px;
+      padding: 16px;
+      border: 1px solid rgba(25, 23, 19, 0.1);
+      border-radius: 18px;
+      background: rgba(255, 250, 242, 0.78);
+    }
+
+    .sensor-record-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .sensor-record-head h3 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.45;
+    }
+
+    .sensor-record-app {
+      margin: 0;
+      color: var(--accent-strong);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .sensor-record-meta,
+    .sensor-record-copy {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+      overflow-wrap: anywhere;
+    }
+
+    .sensor-record-list ul,
+    .sensor-record-list li {
+      margin: 0;
+      padding: 0;
+    }
+
+    .sensor-record-list ul {
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .sensor-record-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .plugin-log-pre {
+      margin: 0;
+      padding: 12px;
+      border-radius: 16px;
+      background: rgba(31, 28, 24, 0.88);
+      color: #fffaf2;
+      font-size: 12px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 1080px) {
+      .sensor-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <nav class="top-link-nav" aria-label="站点导航">
+      <div class="brand-lockup">
+        <img class="brand-logo" src="/assets/t2t-logo.svg" width="140" height="40" alt="T2T" />
+        <p class="brand-subtitle">SensorTower 录入</p>
+      </div>
+      <div class="top-link-actions">
+        <a class="system-link" href="/">首页</a>
+        <a class="system-link" href="/ingest">录入数据</a>
+      </div>
+    </nav>
+
+    <main class="sensor-shell">
+      <section class="panel" style="padding:20px;">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">Metrics Ingest</p>
+            <h1>SensorTower 录入</h1>
+            <p class="helper-text">这里现在会展示 SensorTower overview 记录、CSV 导入归档，以及插件调试日志；也补了手动导入本地 CSV 的入口。</p>
+          </div>
+          <button id="sensortower-refresh" type="button" class="system-link">刷新</button>
+        </div>
+        <div class="chain">
+          <a class="chain-node" href="/ingest">返回录入数据</a>
+          <a class="chain-node" href="/agent/current">查看 agent</a>
+        </div>
+      </section>
+
+      <section class="sensor-grid">
+        <div class="surface-card">
+          <section class="convert-form">
+            <div>
+              <p class="section-kicker">CSV Import</p>
+              <h2>手动导入本地 CSV</h2>
+              <p class="helper-text">插件采集会直接打接口；如果你本地已经有 CSV，也可以从这里补录。</p>
+            </div>
+            <form id="csv-path-form" class="app-form">
+              <input name="path" type="text" placeholder="/absolute/path/to/sensortower.csv" />
+              <button type="submit">导入 CSV</button>
+            </form>
+            <p id="csv-path-status" class="helper-text">输入本机绝对路径后直接导入。</p>
+          </section>
+
+          <section>
+            <div class="section-head" style="padding:0 0 12px; position:static; background:transparent;">
+              <div>
+                <p class="section-kicker">Overview</p>
+                <h2>页面采集记录</h2>
+              </div>
+            </div>
+            <div id="overview-list" class="sensor-record-list"></div>
+          </section>
+
+          <section>
+            <div class="section-head" style="padding:0 0 12px; position:static; background:transparent;">
+              <div>
+                <p class="section-kicker">CSV Archive</p>
+                <h2>CSV 导入归档</h2>
+              </div>
+            </div>
+            <div id="csv-import-list" class="sensor-record-list"></div>
+          </section>
+        </div>
+
+        <aside class="surface-card">
+          <div>
+            <p class="section-kicker">Status</p>
+            <h2>录入状态</h2>
+          </div>
+          <div id="status" class="status-card">准备中...</div>
+
+          <div class="section-head" style="padding:0; position:static; background:transparent;">
+            <div>
+              <p class="section-kicker">Plugin Logs</p>
+              <h2>插件调试日志</h2>
+              <p class="helper-text">方便看插件最近到底有没有把 SensorTower 数据打进来。</p>
+            </div>
+            <button id="clear-plugin-logs" type="button" class="system-link">清空日志</button>
+          </div>
+          <div id="plugin-log-list" class="sensor-record-list"></div>
+        </aside>
+      </section>
+    </main>
+  </div>
+  <div id="toast" class="toast" hidden></div>
+  <script type="module" src="/js/ingest-sensortower.js"></script>
+  <script type="module" src="/js/core/breadcrumb.js"></script>
+</body>
+</html>

@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>T2T App</title>
+  <link rel="stylesheet" href="/styles/base.css?v=20260616-layout-v1" />
+  <link rel="stylesheet" href="/styles/workspaces.css?v=20260616-layout-v1" />
+  <style id="video-player-shared-styles"></style>
+  <style>
+    .app-detail-shell { display:grid; gap:18px; }
+    .app-detail-head {
+      min-height:120px;
+      display:grid;
+      grid-template-columns:minmax(0, 1fr) auto;
+      align-items:stretch;
+      gap:18px;
+    }
+    .app-detail-brand { display:flex; gap:14px; align-items:flex-start; }
+    .app-detail-brand img, .app-detail-logo-fallback {
+      width:64px; height:64px; border-radius:18px; object-fit:cover; display:grid; place-items:center;
+      background:rgba(14,124,102,.12); color:var(--accent-strong); font-weight:900;
+    }
+    .app-detail-brand h1 { margin:4px 0 0; }
+    .app-detail-actions {
+      margin-left:auto;
+      display:grid;
+      grid-auto-flow:column;
+      grid-auto-columns:minmax(112px, 1fr);
+      justify-content:flex-end;
+      align-items:stretch;
+      gap:10px;
+      align-self:stretch;
+    }
+    .app-action-card {
+      min-height:112px;
+      display:inline-flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      padding:14px 16px;
+      border:1px solid rgba(13,111,91,.16);
+      border-radius:14px;
+      background:rgba(255,255,255,.78);
+      color:var(--accent-strong);
+      box-shadow:0 10px 24px rgba(15,23,42,.06);
+      font-size:13px;
+      font-weight:900;
+      text-decoration:none;
+      white-space:nowrap;
+    }
+    .app-action-card:hover { border-color:rgba(13,111,91,.3); background:#fff; }
+    .app-action-card svg { width:22px; height:22px; flex:0 0 auto; }
+    .app-social-action-card span { max-width:92px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .app-detail-meta { display:grid; gap:10px; }
+    .app-detail-tags { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .app-detail-tag { display:inline-flex; align-items:center; min-height:30px; padding:0 10px; border-radius:999px; background:rgba(13,111,91,.1); color:var(--accent-strong); font-size:12px; font-weight:900; }
+    .tag-edit-button { border:1px solid rgba(13,111,91,.16); border-radius:999px; min-height:30px; padding:0 10px; background:rgba(255,255,255,.72); color:var(--accent-strong); cursor:pointer; font:inherit; font-size:12px; font-weight:900; }
+    .app-intel-grid { display:grid; gap:16px; }
+    .app-intel-panel { display:grid; gap:12px; min-width:0; }
+    .app-intel-panel h2, .app-intel-panel p { margin:0; }
+    .intel-top { display:grid; gap:14px; }
+    .intel-middle { display:grid; gap:16px; align-items:start; }
+    .metric-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; }
+    .metric-tile.rank-tile { grid-column:span 2; }
+    .metric-tile { display:grid; gap:5px; min-height:92px; padding:14px; border:1px solid var(--line); border-radius:8px; background:rgba(255,255,255,.68); }
+    .metric-tile span { color:var(--muted); font-size:12px; font-weight:800; }
+    .metric-tile strong { font-size:24px; color:#0578b8; line-height:1.1; overflow-wrap:anywhere; }
+    .metric-tile small { color:var(--muted); font-weight:700; }
+    .tile-head { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+    .tile-icon-button, .section-icon-button { width:32px; height:32px; border:1px solid rgba(13,111,91,.16); border-radius:999px; background:rgba(255,255,255,.76); color:var(--accent-strong); cursor:pointer; display:grid; place-items:center; }
+    .tile-icon-button svg, .section-icon-button svg { width:16px; height:16px; }
+    .rank-logo-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:4px; }
+    .rank-logo { width:28px; height:28px; border-radius:9px; border:1px solid var(--line); object-fit:cover; background:#fff; }
+    .rank-logo-fallback { display:grid; place-items:center; font-size:11px; font-weight:900; color:#0d6f5b; background:var(--logo-bg, rgba(13,111,91,.12)); }
+    .country-strip, .mini-chip-list { display:flex; gap:8px; flex-wrap:wrap; }
+    .country-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px; }
+    .country-group { display:grid; gap:8px; }
+    .mini-chip { display:inline-flex; align-items:center; min-height:28px; padding:0 9px; border-radius:8px; background:rgba(13,111,91,.1); color:var(--accent-strong); font-size:12px; font-weight:900; }
+    .media-grid { display:grid; gap:18px; }
+    .media-section { display:grid; gap:10px; }
+    .media-section.features { width:100%; }
+    .section-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    .section-head h3, .section-head p { margin:0; }
+    .screenshot-strip, .paywall-strip, .preview-video-strip { display:flex; gap:12px; overflow-x:auto; padding:4px 2px 8px; }
+    .screenshot-card, .paywall-card, .preview-video-card { flex:0 0 148px; color:var(--ink); text-decoration:none; }
+    .screenshot-card { padding:0; border:0; background:transparent; cursor:zoom-in; }
+    .screenshot-card img, .paywall-card img, .preview-video-card video { width:148px; height:320px; border:1px solid var(--line); border-radius:14px; object-fit:cover; object-position:top center; background:#f4f6f8; display:block; }
+    .screenshot-card:hover img { border-color:rgba(13,111,91,.34); box-shadow:0 12px 26px rgba(15,23,42,.12); }
+    .paywall-card span { display:block; margin-top:6px; color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .competitor-summary-meta { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .competitor-list { display:grid; gap:8px; }
+    .competitor-row { display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:center; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:rgba(255,255,255,.58); }
+    .competitor-row strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .competitor-row span { color:var(--muted); font-size:12px; }
+    .paywall-status { color:var(--muted); font-size:12px; font-weight:700; }
+    .side-dialog { padding:0; border:0; background:transparent; max-width:none; max-height:none; }
+    .side-dialog::backdrop { background:rgba(12, 20, 18, .28); }
+    .side-dialog-card { margin-left:auto; width:min(460px, calc(100vw - 20px)); min-height:100vh; padding:24px 20px; background:#fffaf2; box-shadow:var(--shadow); display:grid; gap:16px; }
+    .side-dialog-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+    .side-dialog-head h2, .side-dialog-head p { margin:0; }
+    .side-dialog-close { min-height:36px; padding:0 12px; border-radius:999px; border:1px solid rgba(13,111,91,.16); background:rgba(255,255,255,.72); color:var(--accent-strong); cursor:pointer; font:inherit; font-weight:900; }
+    .screenshot-dialog { width:min(1120px, calc(100vw - 32px)); max-height:calc(100vh - 32px); padding:0; border:0; border-radius:24px; background:transparent; overflow:visible; }
+    .screenshot-dialog::backdrop { background:rgba(12,20,18,.66); backdrop-filter:blur(4px); }
+    .screenshot-dialog-card { position:relative; display:grid; grid-template-rows:auto minmax(0, 1fr) auto; gap:12px; max-height:calc(100vh - 32px); padding:16px; border-radius:24px; background:#fffaf2; box-shadow:var(--shadow); }
+    .screenshot-dialog-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    .screenshot-dialog-head h2, .screenshot-dialog-head p { margin:0; }
+    .screenshot-dialog-close { min-height:36px; padding:0 12px; border-radius:999px; border:1px solid rgba(13,111,91,.16); background:rgba(255,255,255,.82); color:var(--accent-strong); cursor:pointer; font:inherit; font-weight:900; }
+    .screenshot-dialog-stage { position:relative; display:grid; place-items:center; min-height:0; border-radius:18px; background:rgba(15,23,42,.06); overflow:hidden; }
+    .screenshot-dialog-stage img { max-width:100%; max-height:calc(100vh - 180px); object-fit:contain; display:block; }
+    .screenshot-nav-button { position:absolute; top:50%; transform:translateY(-50%); width:44px; height:44px; border:1px solid rgba(13,111,91,.18); border-radius:999px; background:rgba(255,250,242,.9); color:var(--accent-strong); cursor:pointer; display:grid; place-items:center; box-shadow:0 10px 24px rgba(15,23,42,.16); font-size:24px; font-weight:900; }
+    .screenshot-nav-button:hover { background:#fff; }
+    .screenshot-nav-button:disabled { opacity:.35; cursor:not-allowed; }
+    .screenshot-nav-prev { left:14px; }
+    .screenshot-nav-next { right:14px; }
+    .screenshot-dialog-foot { display:flex; justify-content:space-between; align-items:center; gap:12px; color:var(--muted); font-size:12px; font-weight:800; }
+    .screenshot-dialog-caption { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .app-detail-tabs { display:grid; gap:16px; padding:20px; }
+    .tab-list { display:flex; gap:4px; flex-wrap:wrap; border-bottom:1px solid var(--line); }
+    .tab-button { min-height:44px; border:0; border-bottom:3px solid transparent; border-radius:0; padding:0 18px; background:transparent; color:var(--muted); cursor:pointer; font:inherit; font-size:14px; font-weight:900; }
+    .tab-button[aria-selected="true"] { color:var(--accent-strong); border-bottom-color:var(--accent-strong); }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+    .app-video-grid { --queue-columns: 4; display:grid; grid-template-columns:repeat(var(--queue-columns), minmax(0, 1fr)); gap:14px; }
+    .section-stack { display:grid; gap:12px; }
+    .section-stack h2, .record-card h3, .section-stack p, .record-card p { margin:0; }
+    .record-list { display:grid; gap:12px; }
+    .record-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:14px; }
+    .record-card { display:grid; gap:10px; }
+    .record-card { padding:18px; border:1px solid var(--line); border-radius:20px; background:rgba(255,255,255,.72); }
+    .record-card p { color:var(--muted); line-height:1.7; }
+    .record-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .tag-dialog-card { width:min(520px, calc(100vw - 32px)); border:0; border-radius:24px; padding:24px; background:#fffaf2; box-shadow:var(--shadow); }
+    .tag-dialog-card h2, .tag-dialog-card p { margin:0; }
+    .tag-dialog-card form { display:grid; gap:16px; }
+    .tag-option-list { display:grid; gap:10px; }
+    .tag-option { display:flex; align-items:center; gap:10px; padding:12px 14px; border:1px solid rgba(25,23,19,.12); border-radius:16px; background:rgba(255,255,255,.68); font-weight:900; cursor:pointer; }
+    .tag-option input { width:16px; height:16px; accent-color:#0d6f5b; }
+    .tag-dialog-card input[type="text"] { width:100%; border:1px solid rgba(25,23,19,.15); border-radius:16px; padding:14px 15px; background:white; font:inherit; }
+    .tag-dialog-actions { display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
+    .shot-player-dialog { width:min(420px, calc(100vw - 28px)); border:0; border-radius:18px; padding:0; background:transparent; }
+    .shot-player-dialog::backdrop { background:rgba(12,20,18,.58); }
+    .shot-player-panel { display:grid; gap:0; padding:14px; border:1px solid rgba(255,255,255,.18); border-radius:18px; background:#0f1115; box-shadow:0 24px 56px rgba(0,0,0,.34); }
+    .shot-player-stage { position:relative; overflow:hidden; border-radius:14px 14px 0 0; background:#000; }
+    .shot-player-stage video,
+    .shot-player-stage img { display:block; width:100%; max-height:min(78vh, 760px); object-fit:contain; background:#000; }
+    .shot-player-meta-bar { display:grid; gap:4px; padding:32px 14px 14px; border-radius:0 0 14px 14px; background:#0f1115; color:#fff; }
+    .shot-player-meta-bar a,
+    .shot-player-meta-bar p { margin:0; }
+    .shot-player-title-link { color:inherit; text-decoration:none; font-size:16px; font-weight:700; line-height:1.35; }
+    .shot-player-title-link:hover { color:rgba(255,255,255,.82); }
+    .shot-player-title-link.is-disabled { pointer-events:none; cursor:default; }
+    .shot-player-meta-bar p { color:rgba(255,255,255,.72); font-size:12px; line-height:1.45; }
+    @media (max-width: 1180px) {
+      .metric-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+      .metric-tile.rank-tile { grid-column:span 2; }
+      .intel-middle { grid-template-columns:1fr; }
+    }
+    @media (max-width: 1080px) {
+      .app-detail-head { grid-template-columns:1fr; }
+      .app-detail-actions { margin-left:0; grid-auto-flow:row; grid-template-columns:repeat(3, minmax(0, 1fr)); }
+      .app-action-card { min-height:78px; }
+      .app-video-grid, .record-grid, .app-intel-grid, .country-grid { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <nav class="top-link-nav" aria-label="站点导航">
+      <div class="brand-lockup">
+        <img class="brand-logo" src="/assets/t2t-logo.svg" width="140" height="40" alt="T2T" />
+        <p id="app-page-subtitle" class="brand-subtitle">App</p>
+      </div>
+      <div class="top-link-actions">
+        <a class="system-link" href="/">首页</a>
+        <a class="system-link" href="/apps">全部 App</a>
+        <a class="system-link" href="/reports">分析输出</a>
+      </div>
+    </nav>
+    <nav id="app-breadcrumb" class="breadcrumb" aria-label="面包屑">
+      <a href="/">首页</a>
+      <span aria-hidden="true">/</span>
+      <span>App</span>
+    </nav>
+
+    <main class="app-detail-shell">
+      <section class="panel" style="padding:20px;">
+        <div id="app-header" class="app-detail-head"></div>
+      </section>
+      <section class="panel" style="padding:20px;">
+        <div id="app-intel" class="app-intel-grid"></div>
+      </section>
+      <section class="panel app-detail-tabs">
+        <div class="tab-list" role="tablist" aria-label="App 内容">
+          <button class="tab-button" type="button" role="tab" aria-selected="true" aria-controls="videos-panel" id="videos-tab">视频</button>
+          <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="articles-panel" id="articles-tab">文章</button>
+          <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="metrics-panel" id="metrics-tab">数据</button>
+        </div>
+        <section id="videos-panel" class="tab-panel active" role="tabpanel" aria-labelledby="videos-tab">
+          <div id="recent-videos" class="app-video-grid"></div>
+        </section>
+        <section id="articles-panel" class="tab-panel" role="tabpanel" aria-labelledby="articles-tab">
+          <div id="recent-articles" class="record-grid"></div>
+        </section>
+        <section id="metrics-panel" class="tab-panel" role="tabpanel" aria-labelledby="metrics-tab">
+          <div id="recent-metrics" class="record-grid"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+  <dialog id="tag-dialog">
+    <div class="tag-dialog-card">
+      <form id="tag-form">
+        <div>
+          <p class="section-kicker">Category</p>
+          <h2>编辑类别</h2>
+        </div>
+        <div id="tag-option-list" class="tag-option-list"></div>
+        <label>
+          <span class="section-kicker">New Category</span>
+          <input id="new-tag-name" type="text" placeholder="写一个新的类别，例如 幼教" />
+        </label>
+        <p id="tag-status" class="helper-text" aria-live="polite"></p>
+        <div class="tag-dialog-actions">
+          <button id="close-tag-dialog" class="system-link" type="button">取消</button>
+          <button class="system-link" type="submit">保存</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+  <dialog id="competitor-dialog" class="side-dialog">
+    <div class="side-dialog-card">
+      <div class="side-dialog-head">
+        <div>
+          <p class="section-kicker">Competitors</p>
+          <h2>同类竞品</h2>
+        </div>
+        <button id="close-competitor-dialog" class="side-dialog-close" type="button">关闭</button>
+      </div>
+      <div id="competitor-dialog-body" class="competitor-list"></div>
+    </div>
+  </dialog>
+  <dialog id="screenshot-dialog" class="screenshot-dialog">
+    <div class="screenshot-dialog-card">
+      <div class="screenshot-dialog-head">
+        <div>
+          <p class="section-kicker">Feature</p>
+          <h2>Feature 图预览</h2>
+        </div>
+        <button id="close-screenshot-dialog" class="screenshot-dialog-close" type="button">关闭</button>
+      </div>
+      <div class="screenshot-dialog-stage">
+        <button id="prev-screenshot" class="screenshot-nav-button screenshot-nav-prev" type="button" aria-label="上一张">‹</button>
+        <img id="screenshot-dialog-image" alt="" />
+        <button id="next-screenshot" class="screenshot-nav-button screenshot-nav-next" type="button" aria-label="下一张">›</button>
+      </div>
+      <div class="screenshot-dialog-foot">
+        <span id="screenshot-dialog-caption" class="screenshot-dialog-caption"></span>
+        <span id="screenshot-dialog-counter"></span>
+      </div>
+    </div>
+  </dialog>
+  <dialog id="shot-player-dialog" class="shot-player-dialog">
+    <div class="shot-player-panel">
+      <div id="shot-player-stage" class="shot-player-stage"></div>
+      <div class="shot-player-meta-bar">
+        <a id="shot-player-title-link" class="shot-player-title-link is-disabled" href="#">
+          <span id="shot-player-title">视频预览</span>
+        </a>
+        <p id="shot-player-meta"></p>
+      </div>
+    </div>
+  </dialog>
+  <div id="toast" class="toast" hidden></div>
+  <script type="module" src="/js/app-dashboard.js"></script>
+  <script type="module" src="/js/core/breadcrumb.js"></script>
+  <script type="module">
+    import { buildVideoPlayerStyles } from "/js/core/video-player.js";
+    const styleEl = document.querySelector("#video-player-shared-styles");
+    if (styleEl) styleEl.textContent = buildVideoPlayerStyles();
+  </script>
+</body>
+</html>

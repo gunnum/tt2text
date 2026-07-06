@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>T2T 视频录入</title>
+  <link rel="stylesheet" href="/styles/base.css?v=20260616-layout-v1" />
+  <link rel="stylesheet" href="/styles/workspaces.css?v=20260616-layout-v1" />
+  <style>
+    .video-ingest-shell {
+      display: grid;
+      gap: 18px;
+    }
+
+    .video-ingest-grid {
+      display: grid;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .surface-card {
+      display: grid;
+      gap: 14px;
+      padding: 18px;
+      background: rgba(255, 255, 255, 0.62);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+    }
+
+    .surface-card h2,
+    .surface-card h3 {
+      margin: 0;
+    }
+
+    .video-page-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .video-library-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .video-library-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .video-library-controls label,
+    .queue-size-control {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .video-library-controls select {
+      min-width: 130px;
+      border: 1px solid rgba(25, 23, 19, 0.15);
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: white;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .selected-app-badge {
+      margin: 0;
+      color: var(--accent-strong);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .batch-confirm-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 14px;
+      max-height: 55vh;
+      overflow: auto;
+      padding: 4px 2px;
+    }
+
+    .batch-confirm-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 14px 0;
+    }
+
+    .batch-confirm-toolbar button,
+    .modal-actions button {
+      border: 1px solid rgba(13, 111, 91, 0.16);
+      border-radius: 999px;
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.72);
+      color: var(--accent-strong);
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .modal-head h2 {
+      margin: 0;
+      font-size: 26px;
+    }
+
+    .modal-card {
+      border: 0;
+      border-radius: 24px;
+      padding: 24px;
+      background: #fffaf2;
+      box-shadow: var(--shadow);
+    }
+
+    .plain-button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 22px;
+      cursor: pointer;
+    }
+
+    @media (max-width: 1080px) {
+      .video-page-head,
+      .video-library-toolbar {
+        align-items: stretch;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <nav class="top-link-nav" aria-label="站点导航">
+      <div class="brand-lockup">
+        <img class="brand-logo" src="/assets/t2t-logo.svg" width="140" height="40" alt="T2T" />
+        <p class="brand-subtitle">视频录入</p>
+      </div>
+    </nav>
+
+    <main class="video-ingest-shell">
+      <section class="video-ingest-grid">
+        <div class="surface-card">
+          <div class="intake-grid">
+            <section class="convert-form">
+              <div>
+                <p class="section-kicker">Single URL</p>
+                <h3>选 App 录入视频</h3>
+              </div>
+              <div class="app-picker-body">
+                <div id="app-list" class="app-list"></div>
+                <button id="app-edit-toggle" type="button" class="app-edit-toggle">编辑</button>
+              </div>
+              <p id="selected-app-badge" class="selected-app-badge">当前 App：未选择</p>
+              <form id="convert-form">
+                <label for="video-url-input">视频链接</label>
+                <div class="input-row">
+                  <input id="video-url-input" name="url" type="url" placeholder="TikTok / YouTube 视频链接" />
+                  <button type="submit">录入视频</button>
+                </div>
+              </form>
+              <p class="helper-text">TikTok 视频详情和 YouTube 链接都从这里录入。</p>
+            </section>
+
+            <section class="convert-form batch-import-card">
+              <div>
+                <p class="section-kicker">TikTok Search</p>
+                <h3>批量录入</h3>
+              </div>
+              <div class="input-row batch-input-row">
+                <label class="batch-query-control">
+                  <span>搜索词</span>
+                  <input id="batch-query" type="text" placeholder="先选 App，再决定搜索词" />
+                </label>
+                <label class="batch-limit-control">
+                  <span>候选数</span>
+                  <select id="batch-limit">
+                    <option value="20">20</option>
+                    <option value="40">40</option>
+                    <option value="60" selected>60</option>
+                    <option value="100">100</option>
+                  </select>
+                </label>
+                <button id="batch-import-button" type="button">采候选</button>
+              </div>
+              <p id="batch-import-status" class="batch-import-status">会先抓候选封面和标题，你确认后才真正入队。</p>
+            </section>
+          </div>
+
+          <section class="job-queue-card">
+            <div class="video-library-toolbar">
+              <div>
+                <h2>最近录入的视频</h2>
+              </div>
+              <div class="video-library-controls">
+                <label>
+                  <span>来源</span>
+                  <select id="video-source-filter">
+                    <option value="all">全部</option>
+                    <option value="queue">TikTok 视频</option>
+                    <option value="ads">视频素材</option>
+                  </select>
+                </label>
+                <label class="queue-size-control">
+                  <span>卡片密度</span>
+                  <input id="queue-size" type="range" min="3" max="6" step="1" value="6" />
+                </label>
+              </div>
+            </div>
+            <div id="video-job-list" class="video-job-list"></div>
+            <p id="video-library-summary" class="helper-text"></p>
+            <div id="video-job-pagination" class="video-job-pagination" hidden></div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div id="status" hidden aria-live="polite"></div>
+
+  <dialog id="batch-confirm-modal" class="batch-confirm-modal">
+    <div class="modal-card batch-confirm-card">
+      <div class="modal-head">
+        <div>
+          <h2 id="batch-confirm-title">确认候选视频</h2>
+          <p id="batch-confirm-summary" class="helper-text"></p>
+        </div>
+        <button id="batch-confirm-close" type="button" class="plain-button" aria-label="关闭">×</button>
+      </div>
+      <div class="batch-confirm-toolbar">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button id="batch-select-all" type="button">全选</button>
+          <button id="batch-select-none" type="button">全不选</button>
+        </div>
+        <strong id="batch-selected-count">已选择 0/0 条</strong>
+      </div>
+      <div id="batch-confirm-list" class="batch-confirm-list"></div>
+      <div class="modal-actions">
+        <button id="batch-confirm-cancel" type="button">取消</button>
+        <button id="batch-confirm-submit" type="button">确认入队</button>
+      </div>
+    </div>
+  </dialog>
+
+  <aside id="failed-job-card" class="failed-job-card" hidden>
+    <div>
+      <p class="failed-job-kicker">Failed Jobs</p>
+      <strong id="failed-job-count">0 个任务失败</strong>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button id="retry-failed-jobs" type="button" class="video-job-action">全部重试</button>
+      <button id="ignore-failed-jobs" type="button" class="video-job-action">全部忽略</button>
+    </div>
+  </aside>
+  <div id="toast" class="toast" hidden></div>
+  <script type="module" src="/js/core/breadcrumb.js"></script>
+  <script type="module" src="/js/ingest-video.js"></script>
+</body>
+</html>

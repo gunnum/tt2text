@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>T2T 首页</title>
+  <link rel="stylesheet" href="/styles/base.css?v=20260616-layout-v1" />
+  <link rel="stylesheet" href="/styles/workspaces.css?v=20260616-layout-v1" />
+  <style>
+    .home-shell {
+      display: grid;
+      gap: 18px;
+    }
+
+    .home-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) minmax(0, 1fr);
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .home-card {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: rgba(255, 255, 255, 0.68);
+      color: var(--ink);
+      text-decoration: none;
+      transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .home-card:hover {
+      transform: translateY(-1px);
+      border-color: rgba(13, 111, 91, 0.24);
+      box-shadow: 0 14px 34px rgba(54, 41, 18, 0.1);
+    }
+
+    .home-card:focus-visible {
+      outline: 3px solid rgba(13, 111, 91, 0.22);
+      outline-offset: 3px;
+    }
+
+    .home-card h2 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.2;
+    }
+
+    .home-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .home-dashboard-section {
+      display: grid;
+      gap: 14px;
+    }
+
+    .home-dashboard-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .home-dashboard-head h1 {
+      margin: 0;
+      font-size: 30px;
+      line-height: 1.15;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 2px;
+      align-items: flex-end;
+    }
+
+    .filters {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      min-width: 180px;
+    }
+
+    .field.compact {
+      min-width: 150px;
+    }
+
+    .field label {
+      color: #51483f;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .category-filter {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+
+    .category-filter legend {
+      width: 100%;
+      margin-bottom: 2px;
+      color: #51483f;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .category-filter legend.sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .category-filter-option {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 36px;
+      padding: 0 11px;
+      border: 1px solid rgba(25, 23, 19, 0.13);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 850;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .category-filter-option:has(input:checked) {
+      border-color: rgba(13, 111, 91, 0.36);
+      background: rgba(13, 111, 91, 0.1);
+      color: var(--accent-strong);
+    }
+
+    .category-filter-option input {
+      width: 15px;
+      height: 15px;
+      margin: 0;
+      accent-color: var(--accent-strong);
+    }
+
+    .category-filter-option:focus-within {
+      border-color: rgba(13, 111, 91, 0.44);
+      box-shadow: 0 0 0 3px rgba(13, 111, 91, 0.11);
+    }
+
+    .app-dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .app-dashboard-card {
+      display: grid;
+      gap: 14px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.68);
+      color: var(--ink);
+      text-decoration: none;
+      transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .app-dashboard-card:hover {
+      transform: translateY(-1px);
+      border-color: rgba(13, 111, 91, 0.24);
+      box-shadow: 0 14px 34px rgba(54, 41, 18, 0.1);
+    }
+
+    .app-dashboard-head,
+    .app-dashboard-brand,
+    .app-dashboard-stats {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .app-dashboard-head {
+      align-items: flex-start;
+    }
+
+    .app-dashboard-brand {
+      justify-content: flex-start;
+    }
+
+    .app-dashboard-logo-link {
+      display: inline-grid;
+      place-items: center;
+      flex: 0 0 auto;
+      color: inherit;
+      text-decoration: none;
+      border-radius: 16px;
+    }
+
+    .app-dashboard-logo-link:focus-visible {
+      outline: 3px solid rgba(13, 111, 91, 0.18);
+      outline-offset: 4px;
+    }
+
+    .app-dashboard-head-actions {
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+      max-width: 52%;
+    }
+
+    .app-dashboard-tags {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      flex: 0 0 auto;
+      flex-wrap: wrap;
+    }
+
+    .app-dashboard-tags span {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 9px;
+      border-radius: 999px;
+      background: rgba(13, 111, 91, 0.1);
+      color: var(--accent-strong);
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .app-dashboard-body-link {
+      display: grid;
+      gap: 14px;
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .app-dashboard-body-link:focus-visible {
+      outline: 3px solid rgba(13, 111, 91, 0.18);
+      outline-offset: 4px;
+      border-radius: 18px;
+    }
+
+    .app-dashboard-brand img,
+    .app-dashboard-logo-fallback {
+      display: grid;
+      place-items: center;
+      width: 52px;
+      height: 52px;
+      flex: 0 0 auto;
+      border-radius: 14px;
+      object-fit: cover;
+      background: rgba(14, 124, 102, 0.12);
+      color: var(--accent-strong);
+      font-weight: 900;
+    }
+
+    .app-dashboard-head h2 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .app-dashboard-stats div {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+      flex: 1 1 88px;
+      padding: 12px 14px;
+      border: 1px solid rgba(25, 23, 19, 0.1);
+      border-radius: 18px;
+      background: rgba(255, 250, 242, 0.82);
+    }
+
+    .app-dashboard-stats span {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .app-dashboard-stats strong {
+      font-size: 28px;
+      line-height: 1.2;
+    }
+
+    .app-dashboard-notes {
+      display: grid;
+      gap: 8px;
+    }
+
+    .app-dashboard-notes p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .app-dashboard-video-line,
+    .app-dashboard-note-line {
+      display: flex;
+      min-width: 0;
+      gap: 4px;
+    }
+
+    .app-dashboard-video-line strong,
+    .app-dashboard-note-line strong {
+      flex: 0 0 auto;
+      color: var(--ink);
+    }
+
+    .app-dashboard-video-line span,
+    .app-dashboard-note-line span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .app-dialog-card {
+      width: min(520px, calc(100vw - 32px));
+      border: 0;
+      border-radius: 24px;
+      padding: 24px;
+      background: #fffaf2;
+      box-shadow: var(--shadow);
+    }
+
+    .app-dialog-card form {
+      display: grid;
+      gap: 14px;
+    }
+
+    .app-dialog-card h2,
+    .app-dialog-card p {
+      margin: 0;
+    }
+
+    .app-dialog-card p {
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .app-dialog-card input {
+      width: 100%;
+      border: 1px solid rgba(25, 23, 19, 0.15);
+      border-radius: 16px;
+      padding: 15px 16px;
+      font: inherit;
+      background: white;
+    }
+
+    .app-dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 980px) {
+      .home-grid,
+      .app-dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (min-width: 981px) and (max-width: 1240px) {
+      .app-dashboard-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <nav class="top-link-nav" aria-label="站点导航">
+      <div class="brand-lockup">
+        <img class="brand-logo" src="/assets/t2t-logo.svg" width="140" height="40" alt="T2T" />
+        <p class="brand-subtitle">app 调研工具</p>
+      </div>
+      <div class="top-link-actions keep-actions">
+        <button id="open-app-dialog" class="system-link" type="button">添加 App</button>
+      </div>
+    </nav>
+
+    <main class="home-shell">
+      <section class="home-grid">
+        <a class="home-card" href="/shots">
+          <div>
+            <p class="section-kicker">Shots</p>
+            <h2>Shots</h2>
+            <p>按垂类查看已收录短视频和复盘报告。</p>
+          </div>
+        </a>
+
+        <a class="home-card" href="/reports">
+          <div>
+            <p class="section-kicker">Reports</p>
+            <h2>AI 报告</h2>
+            <p>报告、脚本、分镜和视频输出统一从这里进入。</p>
+          </div>
+        </a>
+
+        <a class="home-card" href="/ingest">
+          <div>
+            <p class="section-kicker">Ingest</p>
+            <h2>录入数据</h2>
+            <p>视频、文章和 SensorTower 数据从这里进入。</p>
+          </div>
+        </a>
+      </section>
+
+      <section class="home-dashboard-section">
+        <div class="home-dashboard-head">
+          <div>
+            <p class="section-kicker">App Dashboard</p>
+          </div>
+        </div>
+        <div class="toolbar">
+          <div class="filters">
+            <fieldset id="category-filter" class="category-filter" aria-label="类别筛选">
+              <legend>类别</legend>
+            </fieldset>
+          </div>
+        </div>
+        <div id="app-dashboard-list" class="app-dashboard-grid"></div>
+      </section>
+    </main>
+  </div>
+  <dialog id="app-dialog">
+    <div class="app-dialog-card">
+      <form id="home-app-form">
+        <div>
+          <p class="section-kicker">New App</p>
+          <h2>添加 App</h2>
+        </div>
+        <p>粘贴 App Store 链接，系统会读取 App 信息并加入 Dashboard。</p>
+        <input name="appStoreUrl" type="url" placeholder="https://apps.apple.com/..." required />
+        <p id="home-app-status" class="helper-text" aria-live="polite"></p>
+        <div class="app-dialog-actions">
+          <button id="close-app-dialog" class="system-link" type="button">取消</button>
+          <button class="system-link" type="submit">录入 App</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+  <script type="module" src="/js/home.js"></script>
+  <script type="module" src="/js/core/breadcrumb.js"></script>
+</body>
+</html>

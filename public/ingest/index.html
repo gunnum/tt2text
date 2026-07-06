@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>T2T 录入数据</title>
+  <link rel="stylesheet" href="/styles/base.css?v=20260616-layout-v1" />
+  <link rel="stylesheet" href="/styles/workspaces.css?v=20260616-layout-v1" />
+  <style>
+    .ingest-tabs {
+      display: grid;
+      gap: 18px;
+    }
+
+    .tab-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .tab-button {
+      min-height: 44px;
+      border: 0;
+      border-bottom: 3px solid transparent;
+      border-radius: 0;
+      padding: 0 18px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .tab-button[aria-selected="true"] {
+      color: var(--accent-strong);
+      border-bottom-color: var(--accent-strong);
+    }
+
+    .tab-panel {
+      display: none;
+      gap: 14px;
+    }
+
+    .tab-panel.active {
+      display: grid;
+    }
+
+    .tab-panel h1 {
+      margin: 0;
+    }
+
+    .ingest-frame {
+      display: block;
+      width: 100%;
+      min-height: 0;
+      height: 0;
+      border: 0;
+      border-radius: 22px;
+      background: transparent;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <nav class="top-link-nav" aria-label="站点导航">
+      <div class="brand-lockup">
+        <img class="brand-logo" src="/assets/t2t-logo.svg" width="140" height="40" alt="T2T" />
+        <p class="brand-subtitle">录入数据</p>
+      </div>
+    </nav>
+
+    <main class="panel" style="padding:20px;">
+      <section class="surface section ingest-tabs">
+        <div class="tab-list" role="tablist" aria-label="录入数据类型">
+          <button class="tab-button" type="button" role="tab" aria-selected="true" aria-controls="video-panel" id="video-tab">视频录入</button>
+          <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="article-panel" id="article-tab">文章录入</button>
+          <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="sensor-panel" id="sensor-tab">SensorTower 录入</button>
+        </div>
+
+        <div id="video-panel" class="tab-panel active" role="tabpanel" aria-labelledby="video-tab">
+          <iframe class="ingest-frame" title="视频录入" src="/ingest/video"></iframe>
+        </div>
+
+        <div id="article-panel" class="tab-panel" role="tabpanel" aria-labelledby="article-tab">
+          <iframe class="ingest-frame" title="文章录入" src="/ingest/article"></iframe>
+        </div>
+
+        <div id="sensor-panel" class="tab-panel" role="tabpanel" aria-labelledby="sensor-tab">
+          <iframe class="ingest-frame" title="SensorTower 录入" src="/ingest/sensortower"></iframe>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="/js/core/breadcrumb.js"></script>
+  <script>
+    document.querySelectorAll(".tab-button").forEach((button) => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll(".tab-button").forEach((item) => {
+          item.setAttribute("aria-selected", String(item === button));
+        });
+        document.querySelectorAll(".tab-panel").forEach((panel) => {
+          panel.classList.toggle("active", panel.id === button.getAttribute("aria-controls"));
+        });
+        const activeFrame = document.querySelector(`#${button.getAttribute("aria-controls")} .ingest-frame`);
+        activeFrame?._resizeFrame?.();
+      });
+    });
+    document.querySelectorAll(".ingest-frame").forEach((frame) => {
+      const resizeFrame = () => {
+        const doc = frame.contentDocument;
+        if (!doc) return;
+        const height = Math.max(
+          doc.body?.scrollHeight || 0,
+          doc.documentElement?.scrollHeight || 0
+        );
+        frame.style.height = `${height}px`;
+      };
+      frame._resizeFrame = resizeFrame;
+      frame.addEventListener("load", () => {
+        const doc = frame.contentDocument;
+        if (!doc) return;
+        const style = doc.createElement("style");
+        style.textContent = `
+          .top-link-nav, .breadcrumb, main > .panel:first-child, main > .surface.section:first-child { display: none !important; }
+          .page-shell { width: 100% !important; margin: 0 !important; }
+          body { background: transparent !important; overflow: hidden !important; }
+          main { gap: 18px !important; }
+        `;
+        doc.head.appendChild(style);
+        resizeFrame();
+        const observer = new ResizeObserver(resizeFrame);
+        observer.observe(doc.body);
+        frame._resizeObserver?.disconnect?.();
+        frame._resizeObserver = observer;
+        window.setTimeout(resizeFrame, 150);
+        window.setTimeout(resizeFrame, 600);
+      });
+    });
+  </script>
+</body>
+</html>
