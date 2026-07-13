@@ -13,8 +13,8 @@ test("app dashboard prefers App Store media over Sensor Tower screenshots", asyn
         screenshots: [{
           source: "appstore",
           platform: "iphone",
-          imageUrl: "https://example.com/appstore.jpg",
-          thumbnailUrl: "https://example.com/appstore-thumb.jpg"
+          imageUrl: "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/demo/Store-Screenshot-01.jpg/473x1024.jpg",
+          thumbnailUrl: "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/demo/Store-Screenshot-01.jpg/370x800.jpg"
         }],
         previewVideos: [{
           videoUrl: "https://example.com/preview.mp4"
@@ -41,6 +41,6 @@ test("app dashboard prefers App Store media over Sensor Tower screenshots", asyn
   const dashboard = await service.getAppDashboardSummary("123");
 
   assert.equal(dashboard.media.source, "appstore");
-  assert.equal(dashboard.media.screenshots[0].imageUrl, "https://example.com/appstore.jpg");
+  assert.equal(dashboard.media.screenshots[0].imageUrl, "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/demo/Store-Screenshot-01.jpg/473x1024.jpg");
   assert.equal(dashboard.media.previewVideos[0].videoUrl, "https://example.com/preview.mp4");
 });

@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { isLikelyAppStoreScreenshotImageUrl } from "./app-service.mjs";
 
 export function createAppDashboardService(deps = {}) {
   const requiredDeps = [
@@ -40,7 +41,7 @@ export function createAppDashboardService(deps = {}) {
     const sensorTowerLinks = buildSensorTowerLinks({ app, overviewRecord, csvImports: appCsvImports });
     const categoryRanking = appCsvImports.find((item) => item.categoryRanking?.rows?.length)?.categoryRanking || null;
     const appStoreScreenshots = Array.isArray(app.media?.screenshots)
-      ? app.media.screenshots.filter((item) => item?.imageUrl || item?.thumbnailUrl)
+      ? app.media.screenshots.filter((item) => isDisplayableAppStoreScreenshot(item))
       : [];
     const overviewScreenshots = overviewRecord?.overview?.screenshots || [];
     return {
@@ -85,6 +86,11 @@ export function createAppDashboardService(deps = {}) {
 
 function isAppRecord(item, appId) {
   return String(item?.appId || item?.app?.id || "").trim() === appId;
+}
+
+function isDisplayableAppStoreScreenshot(item) {
+  const imageUrl = item?.imageUrl || item?.thumbnailUrl || "";
+  return Boolean(imageUrl) && isLikelyAppStoreScreenshotImageUrl(imageUrl);
 }
 
 function pickLatestByChart(items) {

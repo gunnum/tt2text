@@ -255,6 +255,7 @@ export function createAppService(deps = {}) {
   function normalizeScreenshotUrls(urls, platform) {
     const seen = new Set();
     return urls
+      .filter((url) => isLikelyAppStoreScreenshotUrl(url))
       .map((url) => normalizeAppStoreImageUrl(url))
       .filter(Boolean)
       .filter((url) => {
@@ -291,6 +292,7 @@ export function createAppService(deps = {}) {
     return extractUrlsFromText(html)
       .filter((url) => /mzstatic\.com\/image\/thumb\//i.test(url))
       .filter((url) => /\.(?:jpg|jpeg|png|webp)(?:[?#]|$)/i.test(url))
+      .filter((url) => isLikelyAppStoreScreenshotUrl(url))
       .map(normalizeAppStoreImageUrl)
       .filter(Boolean);
   }
@@ -331,6 +333,10 @@ export function createAppService(deps = {}) {
     }
   }
 
+  function isLikelyAppStoreScreenshotUrl(value) {
+    return isLikelyAppStoreScreenshotImageUrl(value);
+  }
+
   function normalizeText(value) {
     return String(value || "").trim();
   }
@@ -353,4 +359,73 @@ export function createAppService(deps = {}) {
     pickResultAppFields,
     refreshAppStoreMediaForApp
   };
+}
+
+export function isLikelyAppStoreScreenshotImageUrl(value) {
+  let url;
+  try {
+    url = new URL(String(value || "").trim());
+  } catch {
+    return false;
+  }
+
+  const pathname = decodeURIComponent(url.pathname);
+  if (!/mzstatic\.com$/i.test(url.hostname) && !/\.mzstatic\.com$/i.test(url.hostname)) {
+    return false;
+  }
+  if (!/\/image\/thumb\//i.test(pathname)) {
+    return false;
+  }
+  if (!/\.(?:jpg|jpeg|png|webp)$/i.test(pathname)) {
+    return false;
+  }
+  if (isKnownNonScreenshotAppStoreAsset(pathname)) {
+    return false;
+  }
+
+  const sourcePath = removeAppStoreRenditionSuffix(pathname);
+  const size = extractLargestImageSize(pathname);
+  if (hasScreenshotNameSignal(sourcePath)) {
+    return size ? isScreenshotImageSize(size) : true;
+  }
+  if (!/\.(?:jpg|jpeg|png|webp)$/i.test(sourcePath)) {
+    return false;
+  }
+
+  if (!size) {
+    return false;
+  }
+  return isScreenshotImageSize(size);
+}
+
+function isScreenshotImageSize(size) {
+  const shorter = Math.min(size.width, size.height);
+  const longer = Math.max(size.width, size.height);
+  const aspect = longer / shorter;
+  return shorter >= 250 && longer >= 600 && aspect >= 1.25 && aspect <= 2.4;
+}
+
+function isKnownNonScreenshotAppStoreAsset(pathname) {
+  return /(?:^|\/)(?:app[-_ ]?icon|request_app_icon|icon_replacement)[^/]*\.(?:jpg|jpeg|png|webp)/i.test(pathname)
+    || /placeholder\.mill/i.test(pathname)
+    || /\/Features\d+\//i.test(pathname)
+    || /\{w\}x\{h\}/i.test(pathname);
+}
+
+function hasScreenshotNameSignal(pathname) {
+  return /(?:screenshot|screen[_ -]?shot|(?:^|[_ -])screen(?:[_ -]|$)|iphone|ipad|appstore|store[_ -]?screenshot|pr_source)/i.test(pathname);
+}
+
+function removeAppStoreRenditionSuffix(pathname) {
+  return pathname.replace(/\/(?:\d+x\d+(?:bb|sr|w|h)?(?:-\d+)?|\d+x\d+)[^/]*\.(?:jpg|jpeg|png|webp)$/i, "");
+}
+
+function extractLargestImageSize(pathname) {
+  const matches = [...pathname.matchAll(/(\d{2,4})x(\d{2,4})/gi)]
+    .map((match) => ({ width: Number(match[1]), height: Number(match[2]) }))
+    .filter((size) => size.width > 0 && size.height > 0);
+  if (!matches.length) {
+    return null;
+  }
+  return matches.sort((a, b) => (b.width * b.height) - (a.width * a.height))[0];
 }

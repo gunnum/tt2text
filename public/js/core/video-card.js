@@ -98,8 +98,8 @@ function inferAdShotAnalysisCoverPaths(shot = {}) {
   if (!shotId) return [];
   const base = `/data/ad-shots/${encodeURIComponent(shotId)}/analysis`;
   return [
-    `${base}/visual-frames/frame-01-0.00s.jpg`,
     `${base}/first-frame.jpg`,
+    `${base}/visual-frames/frame-01-0.00s.jpg`,
     `${base}/ocr-frames/ocr-frame-001-0.00s.jpg`
   ];
 }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createAppService } from "../server/app-service.mjs";
+import { createAppService, isLikelyAppStoreScreenshotImageUrl } from "../server/app-service.mjs";
 
 function createService(initialApps = []) {
   let apps = structuredClone(initialApps);
@@ -50,4 +50,29 @@ test("refreshing an existing app preserves manual categories", async () => {
   assert.deepEqual(saved.categories, ["工具"]);
   assert.equal(saved.category, "工具");
   assert.equal(saved.createdAt, "2026-06-20 10:00");
+});
+
+test("App Store media keeps screenshots and drops icons/placeholders", async () => {
+  const { service } = createService();
+  const saved = await service.saveAppStoreItem({
+    ...appStoreItem,
+    screenshotUrls: [
+      "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/demo/Store-Screenshot-01.jpg/392x696bb.jpg",
+      "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/demo/AppIcon-0-0-1x_U007emarketing-0-8-0-85-220.png/512x512bb.jpg",
+      "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/demo/Placeholder.mill/473x1024.jpg",
+      "https://is1-ssl.mzstatic.com/image/thumb/Features221/v4/demo/feature.png/473x1024.jpg"
+    ],
+    ipadScreenshotUrls: []
+  }, "");
+
+  assert.equal(saved.media.screenshots.length, 1);
+  assert.match(saved.media.screenshots[0].imageUrl, /Store-Screenshot-01/);
+});
+
+test("App Store screenshot detector requires screenshot-shaped assets", () => {
+  assert.equal(isLikelyAppStoreScreenshotImageUrl("https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/demo/page1.png/392x696bb.jpg"), true);
+  assert.equal(isLikelyAppStoreScreenshotImageUrl("https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/demo/Store-Screenshot-01.jpg/512x512bb.jpg"), false);
+  assert.equal(isLikelyAppStoreScreenshotImageUrl("https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/demo/AppIcon-0-0-1x_U007emarketing-0-8-0-85-220.png/512x512bb.jpg"), false);
+  assert.equal(isLikelyAppStoreScreenshotImageUrl("https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/demo/Placeholder.mill/473x1024.jpg"), false);
+  assert.equal(isLikelyAppStoreScreenshotImageUrl("https://is1-ssl.mzstatic.com/image/thumb/Features221/v4/demo/feature.png/473x1024.jpg"), false);
 });

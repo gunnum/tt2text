@@ -2,6 +2,7 @@ import { fetchJson } from "../core/http.js";
 import { escapeAttribute, escapeHtml, formatAppDisplayName } from "../core/format.js";
 import { bindUnifiedVideoPlayer, renderUnifiedVideoPlayer } from "../core/video-player.js";
 import { getAnalysisProgressInfo } from "../core/analysis-progress.js";
+import { getAdShotCoverPaths, getAdShotVideoPath } from "../core/video-card.js";
 
 const params = new URLSearchParams(window.location.search);
 const sourceType = params.get("source") || params.get("type") || "normal";
@@ -115,18 +116,10 @@ function adaptAdShotDetail(shot, contextApp) {
     stageLabel: shot.analysisProgress?.stageLabel || shot.analysisStage,
     message: shot.analysisProgress?.message
   });
-  const visualFrameCoverPath = Array.isArray(shot.analysisArtifacts?.visualFramePaths) ? shot.analysisArtifacts.visualFramePaths[0] : "";
-  const imageCoverPath = Array.isArray(shot.analysisArtifacts?.imagePaths) ? shot.analysisArtifacts.imagePaths[0] : "";
-  const coverPath = normalizeTextValue(
-    (["queued", "running", "failed"].includes(analysisStatus) ? (visualFrameCoverPath || imageCoverPath) : "")
-    || visualFrameCoverPath
-    || imageCoverPath
-    || shot.analysisArtifacts?.firstFramePath
-    || shot.firstFramePath
-    || shot.posterPath
-    || shot.media?.posterPath
-    || shot.media?.firstFramePath
-  );
+  const coverPaths = getAdShotCoverPaths(shot).map(normalizeTextValue).filter(Boolean);
+  const coverPath = coverPaths[0] || "";
+  const explicitVideoPath = normalizeTextValue(shot.videoPath || shot.media?.videoPath || shot.analysisArtifacts?.videoPath);
+  const videoPath = explicitVideoPath || (analysisStatus === "queued" ? "" : getAdShotVideoPath(shot));
   const hasMissingLocalVideo = !isAnalysisPending && !hasPlayableLocalVideo(shot);
   return {
     id: shot.shotId || shot.id,
@@ -135,10 +128,11 @@ function adaptAdShotDetail(shot, contextApp) {
     app,
     tags: [normalizeTextValue(shot.category || shot.industryLabel), formatRegion(shot), shot.analysisStatus === "completed" ? "" : shot.analysisStatus].filter(Boolean),
     media: {
-      videoPath: isAnalysisPending ? "" : (shot.videoPath || shot.media?.videoPath || ""),
+      videoPath,
       coverPath,
       posterPath: coverPath,
-      notice: isAnalysisPending
+      coverPaths,
+      notice: isAnalysisPending && !videoPath
         ? {
             title: "分析中，视频生成后可播放",
             progress: {
@@ -281,7 +275,10 @@ function renderMedia(detail) {
 
 function bindMediaFallback(detail) {
   const video = document.querySelector("#detail-video");
-  if (!video) return;
+  if (!video) {
+    bindCoverImageFallback(detail);
+    return;
+  }
   bindUnifiedVideoPlayer(document.querySelector(".unified-video-stage"), {
     item: detail.raw || {},
     duration: Number(detail.raw?.duration || 0)
@@ -311,15 +308,7 @@ function bindMediaFallback(detail) {
         ? (detail.raw?.analysisProgress?.message || pendingProgress.label || "正在下载/转写/生成素材拆解，完成后刷新页面即可播放本地视频。")
         : "这通常是采集记录已写入，但本地 video.mp4 尚未生成或下载失败。系统会自动尝试重新获取，也可以手动点重新分析。"
     };
-    const fallbackCoverPath = normalizeTextValue(
-      detail.raw?.analysisArtifacts?.visualFramePaths?.[0]
-      || detail.raw?.analysisArtifacts?.imagePaths?.[0]
-      || detail.raw?.analysisArtifacts?.firstFramePath
-      || detail.raw?.media?.firstFramePath
-      || detail.raw?.media?.posterPath
-      || detail.media.coverPath
-      || detail.media.posterPath
-    );
+    const fallbackCoverPath = normalizeTextValue(detail.media.coverPaths?.[0] || detail.media.coverPath || detail.media.posterPath);
     const fallbackDetail = {
       ...detail,
       media: {
@@ -337,8 +326,31 @@ function bindMediaFallback(detail) {
           item: fallbackDetail.raw || {}
         })
       : '<div class="video-player-empty"><b>' + escapeHtml(fallbackNotice.title) + '</b><span>' + escapeHtml(fallbackNotice.body) + '</span></div>';
+    bindCoverImageFallback(fallbackDetail);
     maybeAutoRefetchMissingVideo(detail);
   }, { once: true });
+}
+
+function bindCoverImageFallback(detail) {
+  const image = document.querySelector(".unified-video-stage img");
+  if (!image) return;
+  const coverPaths = (detail.media.coverPaths || [])
+    .map(normalizeTextValue)
+    .filter(Boolean);
+  if (coverPaths.length <= 1) return;
+  let index = Math.max(0, coverPaths.indexOf(image.getAttribute("src") || ""));
+  image.addEventListener("error", () => {
+    index += 1;
+    const nextCoverPath = coverPaths[index] || "";
+    if (nextCoverPath) {
+      image.src = nextCoverPath;
+      return;
+    }
+    const stage = image.closest(".unified-video-stage");
+    if (stage) {
+      stage.innerHTML = `<div class="video-player-empty">${escapeHtml(["queued", "running"].includes(detail.analysisStatus) ? "分析中，等待生成视频首帧。" : "当前素材没有可用封面。")}</div>`;
+    }
+  });
 }
 
 function getNormalVideoPath(item) {
