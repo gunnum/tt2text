@@ -589,19 +589,21 @@ function getAdShotAnalysis(shot) {
 
 function buildNormalMetrics(engagement = {}) {
   return [
-    { label: "播放", value: engagement.viewText || formatCount(engagement.viewCount) },
     { label: "点赞", value: engagement.likeText || formatCount(engagement.likeCount) },
     { label: "评论", value: engagement.commentText || formatCount(engagement.commentCount) },
+    { label: "收藏", value: engagement.saveText || formatCount(engagement.saveCount) },
     { label: "分享", value: engagement.shareText || formatCount(engagement.shareCount) }
   ];
 }
 
 function buildAdShotMetrics(shot) {
   const metrics = shot.raw?.metrics && typeof shot.raw.metrics === "object" ? shot.raw.metrics : {};
+  const normalized = shot.metrics && typeof shot.metrics === "object" ? shot.metrics : {};
   return [
-    { label: "点赞", value: formatCount(shot.likeCount ?? metrics.like ?? metrics.likes) },
-    { label: "评论", value: formatCount(shot.commentCount ?? metrics.comment ?? metrics.comments) },
-    { label: "转发", value: formatCount(shot.shareCount ?? metrics.share ?? metrics.shares) },
+    { label: "点赞", value: formatCount(normalized.likeCount ?? shot.likeCount ?? metrics.like ?? metrics.likes) },
+    { label: "评论", value: formatCount(normalized.commentCount ?? shot.commentCount ?? metrics.comment ?? metrics.comments) },
+    { label: "收藏", value: formatCount(normalized.saveCount ?? shot.saveCount ?? metrics.save ?? metrics.collect ?? metrics.favorite) },
+    { label: "转发", value: formatCount(normalized.shareCount ?? shot.shareCount ?? metrics.share ?? metrics.shares) },
     { label: "CTR", value: normalizeTextValue(shot.ctrLabel || shot.ctr || metrics.ctr) },
     { label: "预算", value: normalizeTextValue(shot.budgetLabel || shot.budget || metrics.budget) }
   ];

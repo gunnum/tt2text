@@ -481,6 +481,7 @@ export function createTikTokService(deps = {}) {
   function normalizeTikTokEngagement(source = {}) {
     const likeCount = normalizeNullableCount(source.likeCount ?? source.likes ?? source.diggCount ?? source.heartCount);
     const commentCount = normalizeNullableCount(source.commentCount ?? source.comments ?? source.replyCount ?? source.replies);
+    const saveCount = normalizeNullableCount(source.saveCount ?? source.saves ?? source.collectCount ?? source.collects ?? source.favoriteCount ?? source.favorites ?? source.bookmarkCount ?? source.bookmarks);
     const shareCount = normalizeNullableCount(source.shareCount ?? source.shares);
     const viewCount = normalizeNullableCount(source.viewCount ?? source.views ?? source.playCount);
     return {
@@ -488,6 +489,8 @@ export function createTikTokService(deps = {}) {
       likeText: normalizeText(source.likeText || source.likesText || source.diggText || ""),
       commentCount,
       commentText: normalizeText(source.commentText || source.commentsText || source.replyText || ""),
+      saveCount,
+      saveText: normalizeText(source.saveText || source.savesText || source.collectText || source.collectsText || source.favoriteText || source.favoritesText || source.bookmarkText || source.bookmarksText || ""),
       shareCount,
       shareText: normalizeText(source.shareText || source.sharesText || ""),
       viewCount,
@@ -504,6 +507,8 @@ export function createTikTokService(deps = {}) {
       likeText: normalizedPrimary.likeText || normalizedFallback.likeText,
       commentCount: normalizedPrimary.commentCount ?? normalizedFallback.commentCount,
       commentText: normalizedPrimary.commentText || normalizedFallback.commentText,
+      saveCount: normalizedPrimary.saveCount ?? normalizedFallback.saveCount,
+      saveText: normalizedPrimary.saveText || normalizedFallback.saveText,
       shareCount: normalizedPrimary.shareCount ?? normalizedFallback.shareCount,
       shareText: normalizedPrimary.shareText || normalizedFallback.shareText,
       viewCount: normalizedPrimary.viewCount ?? normalizedFallback.viewCount,

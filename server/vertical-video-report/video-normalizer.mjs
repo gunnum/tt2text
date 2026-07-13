@@ -19,6 +19,7 @@ export function createVideoNormalizer({ normalizeText, truncateText } = {}) {
     const metrics = shot.metrics && typeof shot.metrics === "object" ? shot.metrics : {};
     const likeCount = numericCount(metrics.likeCount);
     const commentCount = numericCount(metrics.commentCount);
+    const saveCount = numericCount(metrics.saveCount);
     const shareCount = numericCount(metrics.shareCount);
     const viewCount = numericCount(metrics.viewCount);
     const interactionScore = calculateInteractionScore({ likeCount, commentCount, shareCount });
@@ -62,7 +63,7 @@ export function createVideoNormalizer({ normalizeText, truncateText } = {}) {
       audioKind,
       audioType: audioKind,
       isBgmOnly: Boolean(musicTrack && !transcriptZh),
-      metrics: { likeCount, commentCount, shareCount, viewCount },
+      metrics: { likeCount, commentCount, saveCount, shareCount, viewCount },
       interactionScore,
       hook: truncateText(inferHook(script, shot), 160),
       summary,

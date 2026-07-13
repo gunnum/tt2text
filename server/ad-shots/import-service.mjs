@@ -314,6 +314,7 @@ export function createAdShotImportService(deps = {}) {
         performance: {
           like: detail.like ?? null,
           comment: detail.comment ?? null,
+          save: detail.save ?? null,
           share: detail.share ?? detail.forward ?? null,
           view: detail.view ?? null,
           ctr: detail.ctr ?? null,
@@ -406,12 +407,14 @@ export function createAdShotImportService(deps = {}) {
       metrics: {
         like: engagement.likeCount,
         comment: engagement.commentCount,
+        save: engagement.saveCount,
         share: engagement.shareCount,
         view: engagement.viewCount
       },
       percentile: null,
       like: engagement.likeCount,
       comment: engagement.commentCount,
+      save: engagement.saveCount,
       share: engagement.shareCount,
       forward: engagement.shareCount,
       view: engagement.viewCount,

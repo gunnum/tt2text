@@ -19,7 +19,7 @@ export function renderSummary(el, summary = {}) {
         <p class="eyebrow">Overview</p>
         <h2>数据概览</h2>
       </div>
-      <p class="helper-text">高互动排序采用 点赞 + 评论 x 5 + 分享 x 8；播放量只展示，不参与排序。</p>
+      <p class="helper-text">高互动排序采用 点赞 + 评论 x 5 + 分享 x 8；收藏数用于辅助判断，不参与排序；不展示播放量。</p>
     </div>
     <div class="metric-grid">
       ${renderMetric("库内视频总量", summary.totalLibraryVideoCount || 0)}

@@ -423,7 +423,6 @@ function getAdShotAnalysis(shot) {
 
 function buildNormalMetrics(engagement = {}) {
   return [
-    { label: "播放", value: engagement.viewText || formatCount(engagement.viewCount) },
     { label: "点赞", value: engagement.likeText || formatCount(engagement.likeCount) },
     { label: "评论", value: engagement.commentText || formatCount(engagement.commentCount) },
     { label: "分享", value: engagement.shareText || formatCount(engagement.shareCount) }
@@ -439,7 +438,6 @@ function buildAdShotMetrics(shot) {
     { label: "点赞", value: formatCount(normalized.likeCount ?? shot.likeCount ?? performance.like ?? rawMetrics.like ?? rawMetrics.likes ?? rawLegacyMetrics.like) },
     { label: "评论", value: formatCount(normalized.commentCount ?? shot.commentCount ?? performance.comment ?? rawMetrics.comment ?? rawMetrics.comments ?? rawLegacyMetrics.comment) },
     { label: "分享", value: formatCount(normalized.shareCount ?? shot.shareCount ?? performance.share ?? performance.forward ?? rawMetrics.share ?? rawMetrics.shares ?? rawMetrics.forward ?? rawLegacyMetrics.share ?? rawLegacyMetrics.forward) },
-    { label: "播放", value: formatCount(normalized.viewCount ?? shot.viewCount ?? performance.view ?? rawMetrics.view ?? rawMetrics.views) },
     { label: "CTR 排名", value: normalizeTextValue(normalized.ctrRank) || formatCtrRank(shot.ctrLabel ?? shot.ctr ?? performance.ctr ?? rawMetrics.ctr, shot.raw?.percentile) },
     { label: "预算", value: normalizeTextValue(normalized.budget || shot.budgetLabel || shot.budget) || formatBudget(performance.cost ?? shot.cost ?? normalized.cost ?? rawMetrics.budget) }
   ];

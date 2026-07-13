@@ -111,7 +111,6 @@ function renderReportCard() {
       <div class="report-metrics">
         <span><b>${escapeHtml(report.videoCount || 0)}</b>视频总数</span>
         <span><b>${escapeHtml(formatNumber(report.addedSinceLastAnalysis || 0))}</b>距上次分析新增视频数</span>
-        <span><b>${escapeHtml(formatNumber(countOver1kViews()))}</b>&gt;1k 播放的视频数</span>
       </div>
     </a>
   `;
@@ -312,13 +311,6 @@ function getActiveCategoryApps() {
     return state.apps;
   }
   return state.apps.filter((app) => resolveAppCategories(app).includes(state.activeCategory));
-}
-
-function countOver1kViews() {
-  return filterShotsByActiveCategory().filter((shot) => {
-    const count = Number(shot.metrics?.viewCount || shot.raw?.metrics?.view || shot.raw?.performance?.view || shot.viewCount || 0);
-    return Number.isFinite(count) && count > 1000;
-  }).length;
 }
 
 function displayCategoriesForShot(shot) {

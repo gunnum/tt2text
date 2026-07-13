@@ -648,6 +648,38 @@ async function collectTikTokDetailPage(tabId) {
         return "";
       }
 
+      function readSaveCount() {
+        const direct = readCount([
+          "[data-e2e='favorite-count']",
+          "[data-e2e='browse-favorite-count']",
+          "[data-e2e='collect-count']",
+          "[data-e2e='browse-collect-count']",
+          "[data-e2e='save-count']",
+          "[data-e2e='browse-save-count']",
+          "[data-e2e='undefined-count']"
+        ]);
+        if (direct) return direct;
+
+        const labelPattern = /save|saved|favorite|favourite|collect|bookmark|收藏/i;
+        const containers = Array.from(document.querySelectorAll("button, [role='button'], div, span"));
+        for (const element of containers) {
+          const label = normalizeText([
+            element.getAttribute?.("aria-label"),
+            element.getAttribute?.("title"),
+            element.getAttribute?.("data-e2e"),
+            element.className
+          ].filter(Boolean).join(" "));
+          if (!labelPattern.test(label)) continue;
+          const text = normalizeText(element.innerText || element.textContent);
+          const parsed = parseCompactCount(text);
+          if (Number.isFinite(parsed)) return text.match(/[\d,.]+\s*[KMB万亿]?/i)?.[0] || text;
+          const parentText = normalizeText(element.parentElement?.innerText || element.parentElement?.textContent);
+          const parentMatch = parentText.match(/[\d,.]+\s*[KMB万亿]?/i);
+          if (parentMatch) return parentMatch[0];
+        }
+        return "";
+      }
+
       function readAccountInfo(authorName) {
         const normalizedAuthor = normalizeText(authorName).replace(/^@/, "").toLowerCase();
         const fromJson = readAccountInfoFromJson(normalizedAuthor);
@@ -781,6 +813,7 @@ async function collectTikTokDetailPage(tabId) {
           engagement: {
             likeCount: readCount(["[data-e2e='like-count']", "[data-e2e='browse-like-count']"]),
             commentCount: readCount(["[data-e2e='comment-count']", "[data-e2e='browse-comment-count']"]),
+            saveCount: readSaveCount(),
             shareCount: readCount(["[data-e2e='share-count']", "[data-e2e='browse-share-count']"]),
             viewCount: readCount(["[data-e2e='video-views']", "[data-e2e='browse-video-views']"])
           }

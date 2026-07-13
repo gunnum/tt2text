@@ -37,7 +37,7 @@ function renderVideoRow(video, index) {
     <tr>
       <td>${index + 1}</td>
       <td>${renderVideoLink(video)}<small>${escapeHtml(video.appName)} · ${escapeHtml(video.authorName)}</small></td>
-      <td>赞 ${escapeHtml(formatNumber(video.metrics.likeCount))}<small>评 ${escapeHtml(formatNumber(video.metrics.commentCount))} / 分享 ${escapeHtml(formatNumber(video.metrics.shareCount))}${Number(video.metrics.viewCount || 0) > 0 ? ` / 播放 ${escapeHtml(formatNumber(video.metrics.viewCount))}` : ""}</small></td>
+      <td>赞 ${escapeHtml(formatNumber(video.metrics.likeCount))}<small>评 ${escapeHtml(formatNumber(video.metrics.commentCount))} / 收藏 ${escapeHtml(formatNumber(video.metrics.saveCount))} / 分享 ${escapeHtml(formatNumber(video.metrics.shareCount))}</small></td>
       <td>${escapeHtml(video.accountType)}</td>
       <td>${escapeHtml(video.scriptType)}<small>${escapeHtml(video.exposureLevel)}</small></td>
       <td>${escapeHtml(shortenText(video.hook || video.summary, 120))}</td>

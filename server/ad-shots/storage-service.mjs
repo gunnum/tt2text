@@ -100,7 +100,7 @@ export function createAdShotStorageService(deps = {}) {
   async function hydrateAdShotFromMetadataFile(shot) {
     const existingTrack = deps.normalizeText(shot.musicTrack || shot.bgmTitle || shot.raw?.musicTrack || shot.raw?.track);
     const metadataPath = resolveMetadataPath(shot);
-    if (existingTrack || !metadataPath) {
+    if (!metadataPath) {
       return shot;
     }
 
@@ -111,24 +111,69 @@ export function createAdShotStorageService(deps = {}) {
       const musicArtists = Array.isArray(metadata.artists)
         ? metadata.artists.map((item) => deps.normalizeText(item)).filter(Boolean)
         : [];
-      if (!musicTrack && !musicArtist && !musicArtists.length) {
+      const metadataPerformance = normalizeMetadataPerformance(metadata);
+      const hasMusicPatch = !existingTrack && (musicTrack || musicArtist || musicArtists.length);
+      if (!hasMusicPatch && !Object.keys(metadataPerformance).length) {
         return shot;
       }
+      const raw = shot.raw && typeof shot.raw === "object" ? shot.raw : {};
+      const rawPerformance = raw.performance && typeof raw.performance === "object" ? raw.performance : {};
+      const rawMetrics = raw.metrics && typeof raw.metrics === "object" ? raw.metrics : {};
+      const performancePatch = {
+        ...(Object.keys(metadataPerformance).length ? rawPerformance : {}),
+        ...metadataPerformance
+      };
+      const metricsPatch = {
+        ...(Object.keys(metadataPerformance).length ? rawMetrics : {}),
+        ...(metadataPerformance.like !== undefined ? { like: metadataPerformance.like } : {}),
+        ...(metadataPerformance.comment !== undefined ? { comment: metadataPerformance.comment } : {}),
+        ...(metadataPerformance.save !== undefined ? { save: metadataPerformance.save } : {}),
+        ...(metadataPerformance.share !== undefined ? { share: metadataPerformance.share, forward: metadataPerformance.share } : {}),
+        ...(metadataPerformance.view !== undefined ? { view: metadataPerformance.view } : {})
+      };
+      const topLevelPatch = {
+        ...(metadataPerformance.like !== undefined ? { like: metadataPerformance.like } : {}),
+        ...(metadataPerformance.comment !== undefined ? { comment: metadataPerformance.comment } : {}),
+        ...(metadataPerformance.save !== undefined ? { save: metadataPerformance.save } : {}),
+        ...(metadataPerformance.share !== undefined ? { share: metadataPerformance.share, forward: metadataPerformance.share } : {}),
+        ...(metadataPerformance.view !== undefined ? { view: metadataPerformance.view } : {})
+      };
       return {
         ...shot,
-        musicTrack,
-        musicArtist: musicArtist || musicArtists[0] || "",
-        musicArtists,
+        ...topLevelPatch,
+        ...(hasMusicPatch ? { musicTrack, musicArtist: musicArtist || musicArtists[0] || "", musicArtists } : {}),
         raw: {
-          ...(shot.raw && typeof shot.raw === "object" ? shot.raw : {}),
-          musicTrack,
-          musicArtist: musicArtist || musicArtists[0] || "",
-          musicArtists
+          ...raw,
+          ...(hasMusicPatch ? { musicTrack, musicArtist: musicArtist || musicArtists[0] || "", musicArtists } : {}),
+          ...(Object.keys(performancePatch).length ? { performance: performancePatch } : {}),
+          ...(Object.keys(metricsPatch).length ? { metrics: metricsPatch } : {}),
+          metadataEngagementSource: Object.keys(metadataPerformance).length ? "analysis_metadata" : raw.metadataEngagementSource
         }
       };
     } catch {
       return shot;
     }
+  }
+
+  function normalizeMetadataPerformance(metadata = {}) {
+    const like = normalizeMetadataCount(metadata.like_count);
+    const comment = normalizeMetadataCount(metadata.comment_count);
+    const save = normalizeMetadataCount(metadata.save_count);
+    const share = normalizeMetadataCount(metadata.repost_count ?? metadata.share_count);
+    const view = normalizeMetadataCount(metadata.view_count);
+    return {
+      ...(like !== null ? { like } : {}),
+      ...(comment !== null ? { comment } : {}),
+      ...(save !== null ? { save } : {}),
+      ...(share !== null ? { share } : {}),
+      ...(view !== null ? { view } : {})
+    };
+  }
+
+  function normalizeMetadataCount(value) {
+    if (value === null || value === undefined || value === "") return null;
+    const number = Number(value);
+    return Number.isFinite(number) && number >= 0 ? Math.round(number) : null;
   }
 
   function resolveMetadataPath(shot) {

@@ -57,6 +57,8 @@ def main() -> int:
         video_path = locate_video(job_dir)
         audio_path = job_dir / "audio.wav"
         frame_path = job_dir / "first-frame.jpg"
+        emit_progress("finalize", "抽取视频首帧")
+        capture_first_frame(video_path, frame_path)
         visual_summary = ""
         visual_frame_paths = []
         visual_text_segments = []
@@ -89,8 +91,7 @@ def main() -> int:
             )
         else:
             translation = visual_summary
-        emit_progress("finalize", "抽取首帧")
-        capture_first_frame(video_path, frame_path)
+        emit_progress("finalize", "整理转换结果")
     except Exception as error:
         print(f"转换失败：{error}", file=sys.stderr)
         return 1

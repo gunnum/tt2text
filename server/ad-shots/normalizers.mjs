@@ -306,14 +306,14 @@ export function buildAdShotPerformanceItems(shot, metrics = {}) {
   const performance = shot.raw?.performance && typeof shot.raw.performance === "object" ? shot.raw.performance : {};
   const like = normalizeNullableCount(performance.like ?? shot.like ?? metrics.like);
   const comment = normalizeNullableCount(performance.comment ?? shot.comment ?? metrics.comment);
+  const save = normalizeNullableCount(performance.save ?? performance.collect ?? performance.favorite ?? shot.save ?? shot.collect ?? shot.favorite ?? metrics.save ?? metrics.collect ?? metrics.favorite);
   const share = normalizeNullableCount(performance.share ?? performance.forward ?? shot.share ?? metrics.forward ?? metrics.share);
-  const view = normalizeNullableCount(performance.view ?? shot.view ?? metrics.view);
   if (normalizeAdShotSourcePlatform(shot) === "tiktok") {
     return [
       { label: "点赞", value: formatAdShotMetricCount(like) },
       { label: "评论", value: formatAdShotMetricCount(comment) },
-      { label: "分享", value: formatAdShotMetricCount(share) },
-      { label: "播放", value: formatAdShotMetricCount(view) }
+      { label: "收藏", value: formatAdShotMetricCount(save) },
+      { label: "分享", value: formatAdShotMetricCount(share) }
     ];
   }
   const ctr = Number(performance.ctr ?? shot.ctr);
@@ -546,6 +546,7 @@ function normalizeAdShotMetrics(shot) {
     source: normalizeAdShotSourcePlatform(shot) === "tiktok" ? "tiktok_detail" : "ttcc_top_ads",
     likeCount: normalizeNullableCount(performance.like ?? shot.like ?? metrics.like),
     commentCount: normalizeNullableCount(performance.comment ?? shot.comment ?? metrics.comment),
+    saveCount: normalizeNullableCount(performance.save ?? performance.collect ?? performance.favorite ?? shot.save ?? shot.collect ?? shot.favorite ?? metrics.save ?? metrics.collect ?? metrics.favorite),
     shareCount: normalizeNullableCount(performance.share ?? performance.forward ?? shot.share ?? metrics.forward ?? metrics.share),
     viewCount: normalizeNullableCount(performance.view ?? shot.view ?? metrics.view),
     ctrRank: formatAdShotCtrRank(performance.ctr ?? shot.ctr, shot.raw?.percentile),

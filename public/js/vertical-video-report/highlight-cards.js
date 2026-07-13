@@ -66,8 +66,8 @@ function renderHighlightBreakdownCard(item = {}) {
           <div class="metrics-line compact">
             <span>赞 ${escapeHtml(formatNumber(metrics.likeCount))}</span>
             <span>评论 ${escapeHtml(formatNumber(metrics.commentCount))}</span>
+            <span>收藏 ${escapeHtml(formatNumber(metrics.saveCount))}</span>
             <span>分享 ${escapeHtml(formatNumber(metrics.shareCount))}</span>
-            ${Number(metrics.viewCount || 0) > 0 ? `<span>播放 ${escapeHtml(formatNumber(metrics.viewCount))}</span>` : ""}
           </div>
           ${renderAccountCard(item)}
         </div>
