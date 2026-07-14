@@ -193,12 +193,15 @@ export function createSensorTowerImportService(deps = {}) {
     const sourceRows = deps.parseCsvRows(csvText);
     const recordDataType = deps.normalizeText(page.dataType) || urlMeta.dataType;
     const isCategoryRanking = recordDataType === "category_rankings" || urlMeta.dataType === "category_rankings" || /\/market-analysis\/top-apps/i.test(sourceUrl);
-    const topRows = isCategoryRanking ? sourceRows.slice(0, 26) : sourceRows;
+    const categoryRankingRowLimit = isCategoryRanking ? getCategoryRankingRowLimit(urlMeta) : 0;
+    const topRows = isCategoryRanking ? sourceRows.slice(0, categoryRankingRowLimit + 1) : sourceRows;
     const parsedCsvText = isCategoryRanking ? deps.serializeCsvRows(topRows[0] || [], topRows.slice(1)) : csvText;
     const parsed = deps.parseCsvPreview(parsedCsvText);
+    const categoryRankingRows = isCategoryRanking ? csvRowsToObjects(topRows[0] || [], topRows.slice(1)) : [];
     const archivedFilename = deps.safeFilename(originalFilename || `${urlMeta.dataType || "sensortower"}-${id}.csv`);
     const categoryRanking = isCategoryRanking ? buildCategoryRankingMeta({
-      parsed,
+      rows: categoryRankingRows,
+      rowLimit: categoryRankingRowLimit,
       sourceUrl,
       urlMeta,
       importedAt,
@@ -276,9 +279,20 @@ export function createSensorTowerImportService(deps = {}) {
     for (const item of records) {
       if (buildSensorTowerCsvDedupeKey(item) === record.dedupeKey) return item;
       const existingHash = deps.normalizeText(item.contentHash) || await readStoredCsvHash(item);
-      if (existingHash && existingHash === contentHash) return item;
+      if (existingHash && existingHash === contentHash && isSameCsvSemanticScope(item, record)) return item;
     }
     return null;
+  }
+
+  function isSameCsvSemanticScope(left = {}, right = {}) {
+    if (deps.normalizeText(left.appId) !== deps.normalizeText(right.appId)) return false;
+    if (deps.normalizeText(left.dataType) !== deps.normalizeText(right.dataType)) return false;
+    if (deps.normalizeText(left.chartId) !== deps.normalizeText(right.chartId)) return false;
+    if (deps.normalizeText(left.metric) !== deps.normalizeText(right.metric)) return false;
+    if (buildSensorTowerCsvDedupeKey({ ...left, contentHash: "" }) === buildSensorTowerCsvDedupeKey({ ...right, contentHash: "" })) {
+      return true;
+    }
+    return false;
   }
 
   async function readStoredCsvHash(record = {}) {
@@ -302,8 +316,21 @@ export function createSensorTowerImportService(deps = {}) {
     return path.resolve(storageRootDir, storedPath);
   }
 
-  function buildCategoryRankingMeta({ parsed, sourceUrl, urlMeta, importedAt, appId, appName }) {
-    const rows = (parsed.sampleRows || []).slice(0, 25).map((row, index) => normalizeCategoryRankingRow(row, index));
+  function getCategoryRankingRowLimit(urlMeta = {}) {
+    const pageSize = Number(urlMeta.filters?.pageSize);
+    if (Number.isFinite(pageSize) && pageSize > 0) {
+      return Math.min(Math.trunc(pageSize), 500);
+    }
+    return 25;
+  }
+
+  function csvRowsToObjects(headers = [], rows = []) {
+    const safeHeaders = headers.map((header, index) => header || `col_${index + 1}`);
+    return rows.map((row) => Object.fromEntries(safeHeaders.map((header, index) => [header, row[index] || ""])));
+  }
+
+  function buildCategoryRankingMeta({ rows: rawRows = [], rowLimit = 25, sourceUrl, urlMeta, importedAt, appId, appName }) {
+    const rows = rawRows.slice(0, rowLimit).map((row, index) => normalizeCategoryRankingRow(row, index));
     const totalRevenue = rows.reduce((sum, row) => sum + row.revenueUsd90d, 0);
     const totalDownloads = rows.reduce((sum, row) => sum + row.downloads90d, 0);
     const totalDau = rows.reduce((sum, row) => sum + row.dau, 0);
@@ -317,7 +344,7 @@ export function createSensorTowerImportService(deps = {}) {
       appId,
       appName,
       categoryName,
-      rowLimit: 25,
+      rowLimit,
       metric: urlMeta.metric || "revenue",
       sort: "absolute",
       countries: urlMeta.filters?.countries || [],

@@ -363,19 +363,19 @@ npm install markmap-view markmap-lib
 
 ## 八、常见坑
 
-1. CDN 加载失败  
+1. CDN 加载失败
    页面会显示 `markmap 加载超时`。内网/离线环境要改本地依赖。
 
-2. 输入 Markdown 太长  
+2. 输入 Markdown 太长
    Markmap 会渲染，但节点可能过密。建议上游生成短标题树，而不是完整正文。
 
-3. 全部折叠后布局没有马上更新  
+3. 全部折叠后布局没有马上更新
    当前用 `requestAnimationFrame(...)` 延后调用 `applyLevelSpacing`，迁移时保留这个节奏。
 
-4. Markmap 升级后自定义间距失效  
+4. Markmap 升级后自定义间距失效
    `applyLevelSpacing` 读了 `group.__data__` 和 `path.__data__`，这是偏内部的结构。升级后检查节点和连线是否仍能拿到 `source/target/x/y/parent`。
 
-5. Mermaid 和 Markmap 不是同一种输入  
+5. Mermaid 和 Markmap 不是同一种输入
    `scripts/render_markmap_html.mjs` 读的是 Markdown，不是 `.mmd`。如果上游只有 Mermaid mindmap，需要先转换。
 
 ## 九、推荐给目标 agent 的落地顺序
@@ -408,4 +408,3 @@ npm install markmap-view markmap-lib
 - 全部展开/折叠。
 - 自定义层级间距。
 - 生成独立 HTML 文件。
-

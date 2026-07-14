@@ -22,6 +22,7 @@ export function createVideoDialogController({ dialogEl, stageEl, titleEl, metaEl
       videoPath: video.videoPath || "",
       posterPath: video.posterPath || "",
       coverPath: video.posterPath || "",
+      coverPaths: video.coverPaths || video.framePaths || [],
       title: video.title || "",
       item: video,
       videoClassName: "report-dialog-video",

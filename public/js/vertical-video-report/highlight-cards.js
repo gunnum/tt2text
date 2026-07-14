@@ -21,7 +21,7 @@ export function renderHighlightCards(el, { highlights = [], meta = {} } = {}) {
       ${highlights.length ? highlights.map(renderHighlightBreakdownCard).join("") : '<div class="video-job-empty">还没有缓存高互动视频分析。</div>'}
     </div>
   `;
-  bindSceneFrameFallbacks(el);
+  bindImageFallbacks(el);
 }
 
 export function bindCopyIdButtons({ toastEl } = {}) {
@@ -43,9 +43,9 @@ export function bindCopyIdButtons({ toastEl } = {}) {
 }
 
 function formatHighlightProviderNote(meta = {}) {
-  if (meta.provider === "local-codex") return `本模块由本机 Codex 拆解，已生成 ${meta.count || 0} 条高光分镜。`;
-  if (meta.error) return `本机 Codex 拆解失败，当前展示规则兜底版本：${meta.error}`;
-  return "当前展示规则兜底版本；需要重跑高光分镜时，在对话里告诉 Codex 触发分析。";
+  if (meta.provider === "local-codex") return `已为 ${meta.count || 0} 条视频补充垂类点评；分镜事实来自视频详情分析。`;
+  if (meta.error) return `垂类点评生成失败，当前保留视频详情中的基础分镜：${meta.error}`;
+  return "当前展示视频详情中的基础分镜，暂无额外垂类点评。";
 }
 
 function renderHighlightBreakdownCard(item = {}) {
@@ -78,7 +78,7 @@ function renderHighlightBreakdownCard(item = {}) {
               <b>镜头节奏</b>
               <small>按时间段看完整剧情如何推进。</small>
             </div>
-            ${scenes.length ? scenes.map((scene, index) => renderHighlightScene(scene, index, item)).join("") : "<section><p>暂无高光分镜，建议触发重跑分析。</p></section>"}
+            ${scenes.length ? scenes.map((scene, index) => renderHighlightScene(scene, index, item)).join("") : "<section><p>这条视频还没有完成基础分镜分析。</p></section>"}
           </div>
         </div>
       </div>
@@ -88,12 +88,13 @@ function renderHighlightBreakdownCard(item = {}) {
 
 function renderHighlightScene(scene = {}, index = 0, item = {}) {
   const framePath = scene.framePath || getFramePathForScene(item, index);
+  const fallbackPaths = getCoverPaths(item, [framePath]);
   const isHook = isHookScene(scene, index, item);
   return `
     <section>
       ${framePath ? `
         <button class="highlight-scene-frame" type="button" data-play-video="${escapeAttribute(item.id || "")}" aria-label="播放 ${escapeAttribute(item.title || "视频")}">
-          <img src="${escapeAttribute(framePath)}" alt="${escapeAttribute(`分镜 ${index + 1} 截图`)}" loading="lazy"${item.posterPath && item.posterPath !== framePath ? ` data-fallback-src="${escapeAttribute(item.posterPath)}"` : ""} />
+          <img src="${escapeAttribute(framePath)}" alt="${escapeAttribute(`分镜 ${index + 1} 截图`)}" loading="lazy" data-fallback-src-list="${escapeAttribute(JSON.stringify(fallbackPaths))}" />
         </button>
       ` : ""}
       <div class="highlight-scene-copy">
@@ -102,33 +103,25 @@ function renderHighlightScene(scene = {}, index = 0, item = {}) {
           ${isHook ? '<span class="highlight-hook-tag">Hook</span>' : ""}
         </div>
         <p>${escapeHtml(condenseSceneText(scene.scene || scene.why || item.storySummary || ""))}</p>
-        ${isHook ? `<small>${escapeHtml(formatHookNote(scene, item))}</small>` : ""}
+        ${scene.why || isHook ? `<small><b>垂类判断：</b>${escapeHtml(scene.why || formatHookNote(scene, item))}</small>` : ""}
+        ${scene.learn ? `<small><b>可复用：</b>${escapeHtml(scene.learn)}</small>` : ""}
       </div>
     </section>
   `;
 }
 
 function condenseStorySummary(item = {}) {
-  const appName = item.appName || "这个 App";
   const text = normalizeSpace(item.storySummary || item.summary || "");
   const title = normalizeSpace(item.title || "");
-  const source = `${title} ${text}`;
-  if (/Headway/i.test(appName) && /会议|大会|CEO|ceo|微学习|刷社交媒体|刷屏/.test(source)) {
-    return "一个嘉宾在大会上分享如何像 CEO 一样表达自己，推荐用 Headway 微学习。";
-  }
-  if (/刷屏|scroll|social media|微学习|micro/i.test(source)) {
-    return `${appName} 用一个具体场景说明如何把刷屏时间换成微学习。`;
-  }
-  if (/书单|计划|挑战|Day|天|本书/.test(source)) {
-    return `${appName} 用书单/计划感包装学习任务，让用户知道打开后要做什么。`;
-  }
-  if (/扫描|朗读|听读|摘要|总结|PDF|拍照|scan|listen|summary/i.test(source)) {
-    return `${appName} 用具体使用场景展示一个读书或学习功能。`;
-  }
-  return shortenSentence(text || title || "这条视频需要回看后补充一句话剧情。", 76);
+  return shortenSentence(text || title || "这条视频需要回看后补充一句话剧情。", 96);
 }
 
 function formatSceneMoment(scene = {}, index = 0) {
+  const start = Number(scene.start);
+  const end = Number(scene.end);
+  if (Number.isFinite(start) && Number.isFinite(end) && end > start) {
+    return `${formatSecond(start)}-${formatSecond(end)}s${index === 0 ? " 抓停开场" : ""}`;
+  }
   const raw = normalizeSpace(scene.moment || "");
   if (/0-?3|开头|hook/i.test(raw)) return "0-3s 抓停开场";
   if (/中段|证明|产品|功能/i.test(raw)) return index === 1 ? "3-18s 场景/产品证明" : raw;
@@ -137,29 +130,25 @@ function formatSceneMoment(scene = {}, index = 0) {
   return raw || fallback[index] || `片段 ${index + 1}`;
 }
 
+function formatSecond(value) {
+  const number = Number(Number(value || 0).toFixed(2));
+  return Number.isInteger(number) ? String(number) : String(number);
+}
+
 function isHookScene(scene = {}, index = 0, item = {}) {
   const text = normalizeSpace([scene.moment, scene.scene, item.hook].filter(Boolean).join(" "));
   return index === 0 || /0-?3|开头|hook|抓停|痛点|反差/i.test(text);
 }
 
 function formatHookNote(scene = {}, item = {}) {
-  const appName = item.appName || "产品";
-  const text = normalizeSpace([scene.scene, item.title, item.storySummary].filter(Boolean).join(" "));
-  if (/CEO|ceo|表达|会议|大会/.test(text)) return `用“像 CEO 一样表达自己”的具体承诺让用户停下，再引到 ${appName}。`;
-  if (/刷屏|scroll|社交媒体|短视频|成瘾|微学习/i.test(text)) return `把刷屏痛点说具体，再承诺用 ${appName} 换成微学习。`;
-  if (/读不完|没时间|摘要|summary|10 分钟|15 分钟/i.test(text)) return "用“没时间读完”的真实痛点切入，再给出短时学习解法。";
-  return "先抛出具体痛点或结果承诺，让用户有理由继续看。";
+  const hook = (Array.isArray(item.hooks) ? item.hooks : []).find((entry) => entry?.grab);
+  return shortenSentence(scene.why || hook?.grab || "用具体人物、场景、动作或结果让用户继续看。", 90);
 }
 
 function condenseSceneText(value = "") {
   const text = normalizeSpace(value)
     .replace(/^镜头\s*\d+[:：]\s*/i, "")
     .replace(/^画面\/段落[:：]\s*/, "");
-  if (/Headway|会议现场|微学习|刷社交媒体|20 天听 20 本书/.test(text)) {
-    if (/随后展示|书籍摘要|书摘|10 分钟|20 天听 20 本书|听书计划|学习计划/.test(text)) return "转到 Headway 书摘和 20 天听书计划，证明碎片时间也能学习。";
-    if (/会议现场|CEO|ceo|表达/.test(text)) return "大会嘉宾用“像 CEO 一样表达自己”的字幕建立权威感。";
-    return "用 Headway 微学习替代刷屏，给出更具体的学习行动。";
-  }
   return shortenSentence(text, 72);
 }
 
@@ -188,14 +177,19 @@ function inferVisualFramePath(videoId, index = 0) {
   return `/data/ad-shots/${encodeURIComponent(id)}/analysis/visual-frames/frame-${frameNumber}-${second}.00s.jpg`;
 }
 
-function bindSceneFrameFallbacks(root = document) {
-  root.querySelectorAll(".highlight-scene-frame img[data-fallback-src]").forEach((image) => {
+function bindImageFallbacks(root = document) {
+  root.querySelectorAll("img[data-fallback-src-list]").forEach((image) => {
+    let paths = [];
+    try {
+      paths = JSON.parse(image.dataset.fallbackSrcList || "[]");
+    } catch {}
+    let index = Math.max(0, paths.indexOf(image.getAttribute("src") || ""));
     image.addEventListener("error", () => {
-      const fallbackSrc = image.dataset.fallbackSrc || "";
-      if (!fallbackSrc || image.src.endsWith(fallbackSrc)) return;
-      image.src = fallbackSrc;
-      delete image.dataset.fallbackSrc;
-    }, { once: true });
+      index += 1;
+      const nextPath = paths[index] || "";
+      if (nextPath) image.src = nextPath;
+      else image.remove();
+    });
   });
 }
 
@@ -239,13 +233,25 @@ function renderHighlightTitle(item = {}) {
 }
 
 function renderVideoThumbButton(item = {}) {
-  const canPlay = Boolean(item.videoPath || item.posterPath);
+  const coverPaths = getCoverPaths(item);
+  const coverPath = coverPaths[0] || "";
+  const canPlay = Boolean(item.videoPath || coverPath);
   if (!canPlay) {
     return item.shotUrl ? `<a class="video-thumb-link" href="${escapeAttribute(item.shotUrl)}" target="_blank" rel="noreferrer">打开详情</a>` : '<div class="video-thumb-empty">暂无封面</div>';
   }
   return `
     <button class="video-thumb-button" type="button" data-play-video="${escapeAttribute(item.id || "")}" aria-label="播放 ${escapeAttribute(item.title || "视频")}">
-      ${item.posterPath ? `<img src="${escapeAttribute(item.posterPath)}" alt="" loading="lazy" />` : "<span>播放</span>"}
+      ${coverPath ? `<img src="${escapeAttribute(coverPath)}" alt="" loading="lazy" data-fallback-src-list="${escapeAttribute(JSON.stringify(coverPaths))}" />` : "<span>播放</span>"}
     </button>
   `;
+}
+
+function getCoverPaths(item = {}, preferred = []) {
+  return Array.from(new Set([
+    ...preferred,
+    ...(Array.isArray(item.coverPaths) ? item.coverPaths : []),
+    ...(Array.isArray(item.framePaths) ? item.framePaths : []),
+    inferVisualFramePath(item.id, 0),
+    item.posterPath
+  ].map((value) => String(value || "").trim()).filter(Boolean)));
 }

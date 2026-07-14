@@ -398,7 +398,7 @@ export function createReportOutputService(deps = {}) {
   }
 
   async function loadContext() {
-    const [apps, articles, articleAppLinks, appMetrics, appPaywalls, sensorImports, results, tiktokCommentImports, pluginDebugLogs] = await Promise.all([
+    const [apps, articles, articleAppLinks, appMetrics, appPaywalls, sensorImports, results, adShots, tiktokCommentImports, pluginDebugLogs] = await Promise.all([
       deps.readApps(),
       deps.readArticles(),
       deps.readArticleAppLinks ? deps.readArticleAppLinks() : [],
@@ -406,6 +406,7 @@ export function createReportOutputService(deps = {}) {
       deps.readAppPaywalls(),
       deps.readSensorTowerCsvImports(),
       deps.readResults(),
+      deps.readAdShots ? deps.readAdShots() : [],
       deps.readTikTokCommentsRaw(),
       deps.readPluginDebugLogs ? deps.readPluginDebugLogs() : []
     ]);
@@ -417,6 +418,7 @@ export function createReportOutputService(deps = {}) {
       appPaywalls,
       sensorImports,
       results,
+      adShots,
       tiktokCommentImports,
       pluginDebugLogs
     };
@@ -462,6 +464,8 @@ export function createReportOutputService(deps = {}) {
     const countryMarket = buildCountryMarketSummary(sensorImports);
     const marketMetrics = buildMarketDataStatusMetrics(sensorImports, categoryRanking, countryMarket, appId);
     const results = context.results.filter((item) => recordAppId(item) === appId);
+    const adShots = (context.adShots || []).filter((item) => recordAppId(item) === appId).map(normalizeAdShotVideoRecord);
+    const videos = [...results, ...adShots];
     const tiktokCommentImports = context.tiktokCommentImports.filter((item) => recordAppId(item) === appId);
     const tiktokComments = flattenTikTokComments(tiktokCommentImports);
     const reviewImport = latestImportByType(sensorImports, "reviews");
@@ -469,7 +473,7 @@ export function createReportOutputService(deps = {}) {
     const reviewSamples = selectRepresentativeReviewSamples(reviewCorpus, 25);
     const articleSamples = articles.slice(0, 6).map(normalizeArticleEvidenceSample);
     const companyArticleSamples = selectFounderCompanyArticles(articles).map(normalizeArticleEvidenceSample);
-    const videoCorpus = buildVideoCorpus(app, results);
+    const videoCorpus = buildVideoCorpus(app, videos);
     const videoSamples = [...videoCorpus.relevant]
       .sort((a, b) => numericEngagement(b, "viewCount") - numericEngagement(a, "viewCount"))
       .slice(0, 16)
@@ -518,15 +522,15 @@ export function createReportOutputService(deps = {}) {
       reviewRows: reviewCorpus.length,
       reviewSamples: reviewSamples.length,
       reviewCorpus: reviewCorpus.length,
-      ttVideosRaw: results.length,
+      ttVideosRaw: videos.length,
       ttVideos: videoCorpus.relevant.length,
       ttVideosNoisy: videoCorpus.noisy.length,
       ttComments: tiktokComments.length,
       tiktokCommentImports: tiktokCommentImports.length,
       qiaomuInsights: qiaomuOutput.available ? 1 : 0,
       experienceDocs: experienceDocs.length,
-      signalSources: countPositive([articles.length, results.length, reviewCorpus.length + tiktokComments.length, appMetrics.length]),
-      painPointSources: countPositive([articles.length, results.length, reviewCorpus.length + tiktokComments.length, storeScreenshots.length, experienceDocs.length]),
+      signalSources: countPositive([articles.length, videos.length, reviewCorpus.length + tiktokComments.length, appMetrics.length]),
+      painPointSources: countPositive([articles.length, videos.length, reviewCorpus.length + tiktokComments.length, storeScreenshots.length, experienceDocs.length]),
       userVoice: reviewCorpus.length + tiktokComments.length,
       paidPointSources: countPositive([
         paywallSamples.length,
@@ -4037,6 +4041,41 @@ export function createReportOutputService(deps = {}) {
         rule: "命中 App 名称/别名/商店名/相关账号，或文本明确描述该 App；未命名且画面说明无法确认 App 的素材先标为噪声。"
       }
     };
+  }
+
+  function normalizeAdShotVideoRecord(shot = {}) {
+    const analysis = shot.analysis && typeof shot.analysis === "object" ? shot.analysis : {};
+    const metrics = shot.metrics && typeof shot.metrics === "object" ? shot.metrics : {};
+    const media = shot.media && typeof shot.media === "object" ? shot.media : {};
+    return {
+      ...shot,
+      id: shot.shotId || shot.id || "",
+      sourceKind: "ad_shot",
+      title: normalizeText(shot.title || shot.caption || shot.publishedText || analysis.title || shot.sourceUrl),
+      publishedText: normalizeText(shot.publishedText || shot.caption || shot.title || analysis.caption),
+      visualSummary: normalizeText(
+        analysis.visualSummary
+        || analysis.storySummary
+        || analysis.summary
+        || shot.visualSummary
+        || shot.summary
+        || media.description
+      ),
+      transcriptZh: normalizeText(shot.transcriptZh || analysis.transcriptZh || analysis.scriptZh),
+      transcriptEn: normalizeText(shot.transcriptEn || analysis.transcriptEn || analysis.scriptEn),
+      viewCount: numericFirst(shot.viewCount, shot.views, metrics.viewCount, metrics.views, analysis.viewCount),
+      likeCount: numericFirst(shot.likeCount, shot.likes, metrics.likeCount, metrics.likes, analysis.likeCount),
+      commentCount: numericFirst(shot.commentCount, shot.comments, metrics.commentCount, metrics.comments, analysis.commentCount),
+      sourceUrl: normalizeText(shot.sourceUrl || shot.url || shot.shareUrl || media.sourceUrl)
+    };
+  }
+
+  function numericFirst(...values) {
+    for (const value of values) {
+      const number = Number(value);
+      if (Number.isFinite(number) && number > 0) return number;
+    }
+    return 0;
   }
 
   function scoreVideoRelevance(app, video = {}) {

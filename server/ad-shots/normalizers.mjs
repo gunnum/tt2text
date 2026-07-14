@@ -1,6 +1,11 @@
 import {
   firstNonEmptyVisualTextSegmentsWithNormalizer
 } from "./visual-text.mjs";
+import {
+  normalizeStoryboardScenes,
+  storyboardScenesToFormula,
+  storyboardScenesToKeyMoments
+} from "../features/ad-shot-analysis/index.mjs";
 
 export function normalizeAdShotRecord(shot, projects = [], options = {}) {
   const normalizeVisualTextSegments = typeof options.normalizeVisualTextSegments === "function"
@@ -558,10 +563,29 @@ function normalizeAdShotMetrics(shot) {
 
 function normalizeAdShotAnalysis(shot) {
   const analysis = getAdShotAnalysisBundle(shot);
+  const framePaths = [
+    ...(Array.isArray(shot.analysisArtifacts?.visualFramePaths) ? shot.analysisArtifacts.visualFramePaths : []),
+    ...(Array.isArray(shot.analysisArtifacts?.visualOcrFramePaths) ? shot.analysisArtifacts.visualOcrFramePaths : []),
+    shot.analysisArtifacts?.firstFramePath,
+    shot.media?.firstFramePath,
+    shot.media?.posterPath,
+    shot.posterPath
+  ].map(normalizeText).filter(Boolean).filter((path, index, list) => list.indexOf(path) === index);
+  const storyboardScenes = normalizeStoryboardScenes({
+    scenes: analysis.storyboardScenes,
+    storyboardFormula: analysis.storyboardFormula,
+    keyMoments: analysis.keyMoments,
+    duration: Number(shot.duration) || null,
+    framePaths,
+    posterPath: shot.media?.posterPath || shot.posterPath || shot.media?.firstFramePath
+  });
   return {
     ...analysis,
     cardTitle: normalizeText(analysis.cardTitle || analysis.readableTitle || shot.readableTitle),
     cardSummary: normalizeText(analysis.cardSummary || analysis.storySummary || shot.storySummary),
+    storyboardScenes,
+    storyboardFormula: storyboardScenes.length ? storyboardScenesToFormula(storyboardScenes) : normalizeStringArray(analysis.storyboardFormula),
+    keyMoments: storyboardScenes.length ? storyboardScenesToKeyMoments(storyboardScenes) : normalizeStringArray(analysis.keyMoments),
     visualTextSegments: Array.isArray(analysis.visualTextSegments) ? analysis.visualTextSegments : shot.visualTextSegments || []
   };
 }

@@ -271,6 +271,29 @@ test("category ranking output reuses the latest shared App IQ snapshot", async (
   }
 });
 
+test("growth module counts ad shots as TT material", async () => {
+  const projectRootDir = fs.mkdtempSync(path.join(os.tmpdir(), "tt2text-report-output-"));
+  try {
+    const service = createReportOutputService(createReportOutputDeps(projectRootDir, {
+      adShots: buildVideoRows().map((item, index) => ({
+        ...item,
+        shotId: `shot-${index + 1}`,
+        id: undefined,
+        appId: "app-1",
+        appName: "TestApp"
+      }))
+    }));
+
+    const detail = await service.buildAppReportOutput("app-1");
+    const growth = detail.modules.find((module) => module.id === "growth_signals");
+    assert.equal(detail.sources.ttVideosRaw, 6);
+    assert.equal(detail.sources.ttVideos, 6);
+    assert.equal(growth.status, "ready");
+  } finally {
+    fs.rmSync(projectRootDir, { recursive: true, force: true });
+  }
+});
+
 test("complete source pack generates every report module with quality artifacts", async () => {
   const projectRootDir = fs.mkdtempSync(path.join(os.tmpdir(), "tt2text-report-output-"));
   const originalFetch = globalThis.fetch;
@@ -296,6 +319,9 @@ test("complete source pack generates every report module with quality artifacts"
           "",
           "## 团队能力",
           "团队具备 AI 产品落地和轻量增长执行能力 A2。",
+          "",
+          "## 创始人过往代表作",
+          "创始人在 TestApp 之前的代表作暂未确认，因此不做延伸判断 A2。",
           "",
           "## 增长打法",
           "增长更依赖清晰产品价值和应用商店表达，而不是公开融资叙事 A2。",
@@ -521,6 +547,7 @@ function createReportOutputDeps(projectRootDir, overrides = {}) {
     readAppPaywalls: async () => overrides.appPaywalls || [],
     readSensorTowerCsvImports: async () => overrides.sensorImports || [],
     readResults: async () => overrides.results || [],
+    readAdShots: async () => overrides.adShots || [],
     readTikTokCommentsRaw: async () => overrides.tiktokComments || [],
     fetchQiaomuReviewInsights: async () => overrides.qiaomu || { available: false },
     qiaomuBaseUrl: "http://localhost:4000",

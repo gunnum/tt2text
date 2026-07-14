@@ -165,8 +165,8 @@ function renderHeader(app, dashboard) {
       </div>
     </div>
     <div class="app-detail-actions">
+      ${sensorTowerUrl ? `<a class="app-action-card" href="${escapeAttribute(sensorTowerUrl)}" target="_blank" rel="noreferrer">${renderSensorTowerIcon()}<span>SensorTower</span></a>` : ""}
       ${socialAccounts.map(renderSocialActionCard).join("")}
-      ${sensorTowerUrl ? `<a class="app-action-card" href="${escapeAttribute(sensorTowerUrl)}" target="_blank" rel="noreferrer">${renderSensorTowerIcon()}<span>Sensor Tower</span></a>` : ""}
       ${app.appStoreUrl ? `<a class="app-action-card" href="${escapeAttribute(app.appStoreUrl)}" target="_blank" rel="noreferrer">${renderAppStoreIcon()}<span>App Store</span></a>` : ""}
       <a class="app-action-card" href="/reports.html?appId=${encodeURIComponent(app.id)}" target="_blank" rel="noreferrer">${renderReportIcon()}<span>分析报告</span></a>
     </div>
@@ -200,6 +200,7 @@ function resolveSocialAccounts(app) {
   return rawAccounts
     .map(normalizeSocialAccount)
     .filter(Boolean)
+    .filter(isVisibleHeaderSocialAccount)
     .filter((account) => {
       const key = account.url || `${account.platform}:${account.name}`;
       if (seen.has(key)) return false;
@@ -244,6 +245,16 @@ function normalizeSocialAccount(value) {
   if (!url) return null;
   const name = String(source.name || source.label || handle || formatSocialAccountName(url, platform) || getSocialPlatformLabel(platform)).trim();
   return { platform, url, name };
+}
+
+function isVisibleHeaderSocialAccount(account = {}) {
+  const platform = String(account.platform || "").trim().toLowerCase();
+  const host = safeUrlHost(account.url);
+  const allowedByPlatform = ["x", "tiktok", "website"].includes(platform);
+  if (!allowedByPlatform) return false;
+  return !/(^|\.)apps\.apple\.com$/.test(host)
+    && !/(^|\.)play\.google\.com$/.test(host)
+    && !/(^|\.)reddit\.com$/.test(host);
 }
 
 function normalizeSocialPlatform(value) {
@@ -743,10 +754,10 @@ function renderDetailIcon() {
 function renderSensorTowerIcon() {
   return `
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M4 20h16" />
-      <path d="M6 20V9l6-4 6 4v11" />
-      <path d="M9 20v-7h6v7" />
-      <path d="M10 9h4" />
+      <path d="M5 20h14" />
+      <path d="M7 20V9l5-5 5 5v11" />
+      <path d="M10 20v-6h4v6" />
+      <path d="M9 10h6" />
     </svg>
   `;
 }

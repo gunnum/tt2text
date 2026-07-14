@@ -352,7 +352,10 @@ function dedupeMetrics(metrics) {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "TT2TEXT_CLICK_SENSOR_TOWER_CSV_EXPORT") {
-    clickSensorTowerCsvExport(message.captureId)
+    clickSensorTowerCsvExport({
+      captureId: message.captureId,
+      preferBrowserDownload: Boolean(message.preferBrowserDownload)
+    })
       .then((payload) => sendResponse({ ok: true, payload }))
       .catch((error) => sendResponse({ ok: false, error: error instanceof Error ? error.message : String(error) }));
     return true;
@@ -377,7 +380,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
-async function clickSensorTowerCsvExport(captureId) {
+async function clickSensorTowerCsvExport({ captureId = "", preferBrowserDownload = false } = {}) {
   const before = collectSensorTowerPage();
   const noData = detectNoDownloadableData();
   if (noData) {
@@ -415,9 +418,10 @@ async function clickSensorTowerCsvExport(captureId) {
     };
   }
 
-  const csvCapture = installCsvBlobCapture(captureId);
+  const csvCapture = preferBrowserDownload ? null : installCsvBlobCapture(captureId);
   const clickedControls = [];
   clickedControls.push(readControlDebugLabel(exportControl));
+  csvCapture?.start();
   exportControl.click();
   await sleep(900);
 
@@ -432,7 +436,9 @@ async function clickSensorTowerCsvExport(captureId) {
     }
   }
 
-  const capturedCsv = await csvCapture.wait(isTopAppsPage() ? 24000 : 12000).catch(() => null);
+  const capturedCsv = csvCapture
+    ? await csvCapture.wait(isTopAppsPage() ? 24000 : 12000).catch(() => null)
+    : null;
 
   return {
     ...before,
@@ -494,6 +500,7 @@ function installCsvBlobCapture(captureId) {
   const originalCreateObjectUrl = URL.createObjectURL.bind(URL);
   const originalClick = HTMLAnchorElement.prototype.click;
   const captures = [];
+  let accepting = false;
   let resolved = false;
   let resolveCapture;
   const done = new Promise((resolve) => {
@@ -506,13 +513,16 @@ function installCsvBlobCapture(captureId) {
     if (captureId && event.data.captureId !== captureId) {
       return;
     }
+    if (!accepting) {
+      return;
+    }
     pushCapture(event.data.payload || {});
   };
   window.addEventListener("message", onPageMessage);
 
   URL.createObjectURL = function patchedCreateObjectURL(object) {
     const objectUrl = originalCreateObjectUrl(object);
-    if (object instanceof Blob && looksLikeCsvBlob(object)) {
+    if (accepting && object instanceof Blob && looksLikeCsvBlob(object)) {
       readCsvBlob(object, objectUrl, "").then(pushCapture).catch(() => {});
     }
     return objectUrl;
@@ -527,6 +537,7 @@ function installCsvBlobCapture(captureId) {
       pushCapture(last);
       return undefined;
     } else if (href.startsWith("blob:")) {
+      accepting = true;
       fetch(href)
         .then((response) => response.blob())
         .then((blob) => readCsvBlob(blob, href, filename))
@@ -554,6 +565,10 @@ function installCsvBlobCapture(captureId) {
   }
 
   return {
+    start() {
+      accepting = true;
+      captures.length = 0;
+    },
     wait(timeoutMs) {
       return Promise.race([
         done,

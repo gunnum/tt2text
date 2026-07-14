@@ -1,4 +1,15 @@
-const MATERIAL_ANALYSIS_SCHEMA = "tt2text.material_analysis.v1";
+import {
+  AD_SHOT_ANALYSIS_SCHEMA,
+  buildBaseAnalysisHash,
+  buildBaseAnalysisPrompt,
+  buildBaseAnalysisRepairPrompt,
+  evaluateBaseAnalysisQuality,
+  normalizeStoryboardScenes,
+  storyboardScenesToFormula,
+  storyboardScenesToKeyMoments
+} from "./features/ad-shot-analysis/index.mjs";
+
+const MAX_BASE_ANALYSIS_ATTEMPTS = 2;
 
 export async function buildMaterialAnalysis({
   shot = {},
@@ -45,6 +56,7 @@ export async function buildMaterialAnalysis({
 
   const fallbackScript = semantic.translation_zh || semantic.visual_summary || semantic.transcript_en || "未提取到有效脚本。";
   const fallback = {
+    schema: AD_SHOT_ANALYSIS_SCHEMA,
     cardTitle: "",
     cardSummary: "",
     videoStory: "",
@@ -52,8 +64,10 @@ export async function buildMaterialAnalysis({
     hook: "等待人工复核：系统已完成视频语义提取，但结构化拆解未成功。",
     productMechanism: "等待人工复核。",
     productFeatures: [],
+    creativeStrategy: {},
     reusableTemplate: "等待人工复核。",
     storyboardFormula: [],
+    storyboardScenes: [],
     onScreenTextOriginal: "",
     onScreenTextZh: "",
     visualTextSegments: semanticVisualTextSegments,
@@ -62,77 +76,89 @@ export async function buildMaterialAnalysis({
   };
 
   if (!sourceText) {
-    return fallback;
+    const quality = evaluateBaseAnalysisQuality(fallback);
+    return withMaterialAnalysisQuality(fallback, quality, []);
   }
 
-  const prompt = [
-    "Use $ad-video-analyzer.",
+  const prompt = buildBaseAnalysisPrompt({
     sourceContextLine,
-    "请根据转写、画面语义、画面文字时间轴和基础元数据，输出适合入库展示的结构化中文 JSON。",
-    "要求：",
-    "- cardTitle 点出核心产品功能和视频解决的问题，不要只复述开头 hook。",
-    "- cardSummary 用 2 到 3 句中文浓缩剧情、产品功能和解决的问题。",
-    "- videoStory 按顺序讲清视频剧情：开头问了什么，中间展示了什么，哪个功能回答了问题，如何收尾。",
-    "- script 是可读脚本，可以按镜头/字幕/口播顺序组织。",
-    "- hook 只写开头提出的具体问题或情境，不要拔高成营销术语。",
-    "- productFeatures 是数组，逐条列出视频里展示或说到的具体 app 功能；不要写成一大段。",
-    "- productMechanism 用 1 到 2 句解释这些功能如何解决视频开头的问题。",
-    "- storyboardFormula 是数组，按分镜公式写：分镜 1：抛出问题；分镜 2：展示产品核心使用方法；分镜 3：展示哪个功能解决分镜 1 的问题；分镜 4：收尾。可按实际视频增减。",
-    "- reusableTemplate 可留空或简短复述 storyboardFormula，不要写泛泛改写建议。",
-    "- onScreenTextOriginal 是画面中主要外文字幕/大字；没有就留空。",
-    "- onScreenTextZh 是画面中文字的自然中文翻译；没有就留空。",
-    "- visualTextSegments 是画面文字时间轴数组。只记录画面上真实出现的外文/屏幕文字；每段包含 start、end、original、zh。画面没有文字就不要生成段落。start/end 用秒，允许根据抽帧粗估。",
-    "- 如果输入里已有“画面文字时间轴”，优先沿用它的时间段，不要压缩成一条静态字幕；你只可以修正明显不自然的中文译文。",
-    ...(singleBeatHint.isSingleBeat ? [
-      "- 这条视频的画面文字基本只有 1 段并覆盖全片，说明它更像单镜头/单信息点短视频。",
-      "- 不要把同一段大字文案硬拆成多个起承转合；如果没有明确镜头切换、UI切换或时间上分开的动作，storyboardFormula 只写 1 条。"
-    ] : []),
-    ...(transcriptSignal.ignoreTranscript ? [
-      "- 这条视频的音轨和画面主文案明显冲突，音轨更像 BGM/歌词或环境声，不要用它来拆分镜头结构。",
-      "- 在这条视频里，storyboardFormula、videoStory、keyMoments 以画面文字和画面变化为准。"
-    ] : []),
-    "- keyMoments 最多 5 条，写关键镜头或信息点。",
-    ...(isNormalTikTokVideo ? [
-      "- 普通 TikTok 视频没有 TTCC 投放数据，不要编造 CTR、预算、投放排名或广告主来源。",
-      "- 如果视频是用户故事、避雷、教程或自然讨论，也要按素材结构拆：它如何开场、呈现什么产品/问题、评论或画面提供了什么用户洞察。"
-    ] : []),
-    "- 不要输出情绪价值模块，不要输出泛泛的改写角度。",
-    "只返回 JSON，不要 markdown，形状如下：",
-    "{\"cardTitle\":\"...\",\"cardSummary\":\"...\",\"videoStory\":\"...\",\"script\":\"...\",\"hook\":\"...\",\"productFeatures\":[\"...\"],\"productMechanism\":\"...\",\"storyboardFormula\":[\"分镜 1：...\"],\"reusableTemplate\":\"...\",\"onScreenTextOriginal\":\"...\",\"onScreenTextZh\":\"...\",\"visualTextSegments\":[{\"start\":0,\"end\":2.4,\"original\":\"...\",\"zh\":\"...\"}],\"keyMoments\":[\"...\"]}",
-    "",
-    sourceText
-  ].join("\n");
+    sourceText,
+    isNormalTikTokVideo,
+    singleBeatHint,
+    transcriptSignal
+  });
+  const attempts = [];
+  let nextPrompt = prompt;
+  let bestAnalysis = null;
+  let lastError = null;
 
-  try {
-    const content = await runJsonTask(prompt, timeoutMs, jsonTaskOptions);
-    const parsed = JSON.parse(extractJsonObject(content));
-    const base = {
-      cardTitle: truncateText(normalizeText(parsed.cardTitle), 80) || fallback.cardTitle,
-      cardSummary: truncateText(normalizeText(parsed.cardSummary), 260) || fallback.cardSummary,
-      videoStory: truncateText(normalizeText(parsed.videoStory), 800) || fallback.videoStory,
-      script: truncateText(normalizeText(parsed.script), 5000) || fallback.script,
-      hook: truncateText(normalizeText(parsed.hook), 1000) || fallback.hook,
-      productFeatures: normalizeStringArray(parsed.productFeatures || parsed.featureList || parsed.features).slice(0, 8),
-      productMechanism: truncateText(normalizeText(parsed.productMechanism), 1200) || fallback.productMechanism,
-      storyboardFormula: normalizeStringArray(parsed.storyboardFormula || parsed.storyboard || parsed.shotFormula).slice(0, 6),
-      reusableTemplate: truncateText(normalizeText(parsed.reusableTemplate), 1600) || fallback.reusableTemplate,
-      onScreenTextOriginal: truncateText(normalizeText(parsed.onScreenTextOriginal), 240) || semanticVisualTextSegments[0]?.original || "",
-      onScreenTextZh: truncateText(normalizeText(parsed.onScreenTextZh), 240) || semanticVisualTextSegments[0]?.zh || "",
-      visualTextSegments: semanticVisualTextSegments.length
-        ? semanticVisualTextSegments
-        : normalizeVisualTextSegments(parsed.visualTextSegments, Number(shot.duration) || null),
-      keyMoments: normalizeStringArray(parsed.keyMoments).slice(0, 5),
-      rewriteAngles: []
-    };
-    return singleBeatHint.isSingleBeat
-      ? collapseSingleBeatAnalysis(base, shot, singleBeatHint)
-      : base;
-  } catch (error) {
-    return {
-      ...fallback,
-      structureError: error instanceof Error ? error.message : String(error)
-    };
+  for (let round = 1; round <= MAX_BASE_ANALYSIS_ATTEMPTS; round += 1) {
+    try {
+      const content = await runJsonTask(nextPrompt, timeoutMs, jsonTaskOptions);
+      const parsed = JSON.parse(extractJsonObject(content));
+      let candidate = normalizeGeneratedMaterialAnalysis(parsed, {
+        fallback,
+        shot,
+        semantic,
+        semanticDuration,
+        semanticVisualTextSegments,
+        normalizeVisualTextSegments
+      });
+      if (singleBeatHint.isSingleBeat) {
+        candidate = collapseSingleBeatAnalysis(candidate, shot, singleBeatHint, {
+          framePaths: semantic.visual_frame_paths || semantic.visualFramePaths,
+          posterPath: semantic.first_frame_path || semantic.firstFramePath
+        });
+      }
+      const quality = evaluateBaseAnalysisQuality(candidate);
+      attempts.push({
+        round,
+        status: quality.status,
+        score: quality.score,
+        issues: quality.issues.map((issue) => issue.code)
+      });
+      candidate = withMaterialAnalysisQuality(candidate, quality, attempts);
+      if (!bestAnalysis || candidate.qualityScore > bestAnalysis.qualityScore) {
+        bestAnalysis = candidate;
+      }
+      if (quality.status === "passed") {
+        return candidate;
+      }
+      if (round < MAX_BASE_ANALYSIS_ATTEMPTS) {
+        nextPrompt = buildBaseAnalysisRepairPrompt({
+          originalPrompt: prompt,
+          previousAnalysis: candidate,
+          issues: quality.issues,
+          round: round + 1
+        });
+      }
+    } catch (error) {
+      lastError = error;
+      attempts.push({
+        round,
+        status: "failed",
+        score: 0,
+        issues: [error instanceof Error ? error.message : String(error)]
+      });
+      if (round < MAX_BASE_ANALYSIS_ATTEMPTS) {
+        nextPrompt = buildBaseAnalysisRepairPrompt({
+          originalPrompt: prompt,
+          previousAnalysis: bestAnalysis || fallback,
+          issues: [{ message: error instanceof Error ? error.message : String(error) }],
+          round: round + 1
+        });
+      }
+    }
   }
+
+  if (bestAnalysis) {
+    return bestAnalysis;
+  }
+  const quality = evaluateBaseAnalysisQuality(fallback);
+  return withMaterialAnalysisQuality({
+    ...fallback,
+    structureError: lastError instanceof Error ? lastError.message : String(lastError || "素材拆解未通过结构校验。")
+  }, quality, attempts);
 }
 
 export function normalizeMaterialAnalysis(analysis = {}, context = {}, {
@@ -144,10 +170,17 @@ export function normalizeMaterialAnalysis(analysis = {}, context = {}, {
     analysis.visualTextSegments || analysis.visual_text_segments || fallback.visualTextSegments,
     null
   );
-  return {
-    schema: MATERIAL_ANALYSIS_SCHEMA,
+  const storyboardScenes = normalizeStoryboardScenes({
+    scenes: analysis.storyboardScenes || fallback.storyboardScenes,
+    storyboardFormula: analysis.storyboardFormula || analysis.storyboard || analysis.shotFormula || fallback.storyboardFormula,
+    keyMoments: analysis.keyMoments || fallback.keyMoments,
+    duration: context.duration,
+    framePaths: context.framePaths,
+    posterPath: context.posterPath
+  });
+  const normalized = {
+    schema: AD_SHOT_ANALYSIS_SCHEMA,
     source: normalizeText(context.source) || "normal_tiktok_video",
-    status: analysis.structureError ? "needs_review" : "completed",
     cardTitle: truncateText(normalizeText(analysis.cardTitle || fallback.cardTitle), 80),
     cardSummary: truncateText(normalizeText(analysis.cardSummary || fallback.cardSummary), 260),
     videoStory: truncateText(normalizeText(analysis.videoStory || fallback.videoStory), 900),
@@ -155,15 +188,114 @@ export function normalizeMaterialAnalysis(analysis = {}, context = {}, {
     hook: truncateText(normalizeText(analysis.hook || fallback.hook), 1000),
     productFeatures: normalizeStringArray(analysis.productFeatures || analysis.featureList || analysis.features || fallback.productFeatures).slice(0, 8),
     productMechanism: truncateText(normalizeText(analysis.productMechanism || fallback.productMechanism), 1200),
-    storyboardFormula: normalizeStringArray(analysis.storyboardFormula || analysis.storyboard || analysis.shotFormula || fallback.storyboardFormula).slice(0, 8),
+    creativeStrategy: normalizeCreativeStrategy(analysis.creativeStrategy || fallback.creativeStrategy),
+    storyboardScenes,
+    storyboardFormula: storyboardScenesToFormula(storyboardScenes),
     reusableTemplate: truncateText(normalizeText(analysis.reusableTemplate || fallback.reusableTemplate), 1600),
     onScreenTextOriginal: truncateText(normalizeText(analysis.onScreenTextOriginal || fallback.onScreenTextOriginal), 240),
     onScreenTextZh: truncateText(normalizeText(analysis.onScreenTextZh || fallback.onScreenTextZh), 240),
     visualTextSegments,
-    keyMoments: normalizeStringArray(analysis.keyMoments || fallback.keyMoments).slice(0, 6),
+    keyMoments: storyboardScenesToKeyMoments(storyboardScenes),
     structureError: truncateText(normalizeText(analysis.structureError || ""), 600),
     generatedAt: normalizeText(context.generatedAt) || now()
   };
+  const quality = analysis.qualityStatus
+    ? {
+        status: normalizeText(analysis.qualityStatus),
+        score: Number(analysis.qualityScore) || 0,
+        issues: normalizeQualityIssues(analysis.qualityIssues)
+      }
+    : evaluateBaseAnalysisQuality(normalized);
+  return withMaterialAnalysisQuality(normalized, quality, analysis.analysisAttempts || []);
+}
+
+function normalizeGeneratedMaterialAnalysis(parsed = {}, {
+  fallback,
+  shot,
+  semantic,
+  semanticDuration,
+  semanticVisualTextSegments,
+  normalizeVisualTextSegments
+} = {}) {
+  const storyboardScenes = normalizeStoryboardScenes({
+    scenes: parsed.storyboardScenes || parsed.storyboard_scenes,
+    storyboardFormula: parsed.storyboardFormula || parsed.storyboard || parsed.shotFormula,
+    keyMoments: parsed.keyMoments,
+    duration: semanticDuration,
+    framePaths: semantic.visual_frame_paths || semantic.visualFramePaths,
+    posterPath: semantic.first_frame_path || semantic.firstFramePath
+  });
+  return {
+    schema: AD_SHOT_ANALYSIS_SCHEMA,
+    cardTitle: truncateText(normalizeText(parsed.cardTitle), 80) || fallback.cardTitle,
+    cardSummary: truncateText(normalizeText(parsed.cardSummary), 260) || fallback.cardSummary,
+    videoStory: truncateText(normalizeText(parsed.videoStory), 800) || fallback.videoStory,
+    script: truncateText(normalizeText(parsed.script), 5000) || fallback.script,
+    hook: truncateText(normalizeText(parsed.hook), 1000) || fallback.hook,
+    productFeatures: normalizeStringArray(parsed.productFeatures || parsed.featureList || parsed.features).slice(0, 8),
+    productMechanism: truncateText(normalizeText(parsed.productMechanism), 1200) || fallback.productMechanism,
+    creativeStrategy: normalizeCreativeStrategy(parsed.creativeStrategy),
+    storyboardScenes,
+    storyboardFormula: storyboardScenesToFormula(storyboardScenes),
+    reusableTemplate: truncateText(normalizeText(parsed.reusableTemplate), 1600) || fallback.reusableTemplate,
+    onScreenTextOriginal: truncateText(normalizeText(parsed.onScreenTextOriginal), 240) || semanticVisualTextSegments[0]?.original || "",
+    onScreenTextZh: truncateText(normalizeText(parsed.onScreenTextZh), 240) || semanticVisualTextSegments[0]?.zh || "",
+    visualTextSegments: semanticVisualTextSegments.length
+      ? semanticVisualTextSegments
+      : normalizeVisualTextSegments(parsed.visualTextSegments, Number(shot.duration) || null),
+    keyMoments: storyboardScenesToKeyMoments(storyboardScenes),
+    rewriteAngles: []
+  };
+}
+
+function withMaterialAnalysisQuality(analysis, quality, attempts) {
+  const normalized = {
+    ...analysis,
+    schema: AD_SHOT_ANALYSIS_SCHEMA,
+    qualityStatus: quality.status,
+    qualityScore: Number(quality.score) || 0,
+    qualityIssues: normalizeQualityIssues(quality.issues),
+    analysisAttempts: (Array.isArray(attempts) ? attempts : []).slice(-3)
+  };
+  return {
+    ...normalized,
+    baseAnalysisHash: buildBaseAnalysisHash(normalized),
+    status: normalized.structureError || normalized.qualityStatus !== "passed" ? "needs_review" : "completed"
+  };
+}
+
+function normalizeCreativeStrategy(value = {}) {
+  if (!value || typeof value !== "object") return {};
+  const pattern = normalizeText(value.creativePattern || value.pattern).toLowerCase();
+  const exposure = normalizeText(value.appExposureLevel || value.exposureLevel).toLowerCase();
+  return {
+    creativePattern: [
+      "pain_point_demo",
+      "result_first",
+      "ugc_story",
+      "listicle",
+      "challenge",
+      "tutorial",
+      "comparison",
+      "social_proof",
+      "single_beat",
+      "other"
+    ].includes(pattern) ? pattern : "other",
+    appExposureLevel: ["strong", "medium", "weak"].includes(exposure) ? exposure : "weak",
+    hookMechanism: truncateText(normalizeText(value.hookMechanism), 300),
+    creativeMechanism: truncateText(normalizeText(value.creativeMechanism), 500)
+  };
+}
+
+function normalizeQualityIssues(value) {
+  return (Array.isArray(value) ? value : []).map((issue) => {
+    if (typeof issue === "string") return { code: issue, severity: "warning", message: issue };
+    return {
+      code: normalizeText(issue?.code) || "quality_issue",
+      severity: normalizeText(issue?.severity) || "warning",
+      message: truncateText(normalizeText(issue?.message), 300)
+    };
+  }).slice(0, 12);
 }
 
 function normalizeMaterialSourcePlatform(source = {}) {
@@ -330,7 +462,7 @@ function detectSingleBeatVideo(segments, duration) {
   };
 }
 
-function collapseSingleBeatAnalysis(analysis, shot, hint) {
+function collapseSingleBeatAnalysis(analysis, shot, hint, { framePaths = [], posterPath = "" } = {}) {
   const text = truncateText(
     normalizeText(
       hint?.segment?.zh
@@ -344,9 +476,21 @@ function collapseSingleBeatAnalysis(analysis, shot, hint) {
   );
   const appName = normalizeText(shot.appName || shot.appDisplay || shot.brandName || "");
   const singleStep = text
-    ? `分镜 1：整条视频基本只有一个镜头/信息点，用同一段大字文案${appName ? `和 ${appName} 相关画面` : ""}表达：${text}`
-    : "分镜 1：整条视频基本只有一个镜头/信息点，没有明确的二次转场或独立步骤。";
-  const singleMoment = `0s-${Number(hint.duration.toFixed(1))}s：${text || "单镜头信息表达"}`;
+    ? `整条视频基本只有一个镜头或信息点，用同一段大字文案${appName ? `和 ${appName} 相关画面` : ""}表达：${text}`
+    : "整条视频基本只有一个镜头或信息点，没有明确的二次转场或独立步骤。";
+  const storyboardScenes = normalizeStoryboardScenes({
+    scenes: [{
+      start: 0,
+      end: hint.duration,
+      scene: singleStep,
+      role: "hook",
+      whyItWorks: analysis.creativeStrategy?.hookMechanism || "用单一信息点集中传达核心主张。",
+      frameTime: Math.min(0.8, Math.max(0.2, hint.duration * 0.3))
+    }],
+    duration: hint.duration,
+    framePaths,
+    posterPath
+  });
   return {
     ...analysis,
     videoStory: truncateText(
@@ -355,9 +499,14 @@ function collapseSingleBeatAnalysis(analysis, shot, hint) {
         .trim() || singleStep,
       800
     ),
-    storyboardFormula: [singleStep],
+    creativeStrategy: {
+      ...analysis.creativeStrategy,
+      creativePattern: "single_beat"
+    },
+    storyboardScenes,
+    storyboardFormula: storyboardScenesToFormula(storyboardScenes),
     reusableTemplate: singleStep,
-    keyMoments: [singleMoment]
+    keyMoments: storyboardScenesToKeyMoments(storyboardScenes)
   };
 }
 

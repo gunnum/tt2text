@@ -635,6 +635,30 @@
   font-weight: 900;
 }
 
+.video-job-badge-status {
+  white-space: nowrap;
+}
+
+.video-job-card.status-pending .video-job-badge-status {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.video-job-card.status-queued .video-job-badge-status {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.video-job-card.status-running .video-job-badge-status {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.video-job-card.status-failed .video-job-badge-status {
+  background: #ffe9e4;
+  color: #8b2b1d;
+}
+
 .video-job-time,
 .video-job-meta {
   margin: 0;

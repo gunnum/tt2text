@@ -13,7 +13,7 @@ const plistPath = path.join(launchAgentsDir, `${label}.plist`);
 const logDir = path.join(os.homedir(), "Library", "Logs", "tt2text");
 const storageRootDir = process.env.TT2TEXT_STORAGE_DIR
   ? path.resolve(expandHome(process.env.TT2TEXT_STORAGE_DIR))
-  : path.join(os.homedir(), "Library", "Application Support", "TT2Text");
+  : projectRoot;
 const nodePath = process.execPath;
 const serverPath = path.join(projectRoot, "server.mjs");
 const userDomain = `gui/${process.getuid()}`;

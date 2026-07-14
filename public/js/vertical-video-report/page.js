@@ -1,4 +1,5 @@
 import { fetchJson } from "../core/http.js";
+import { getAdShotCoverPaths } from "../core/video-card.js";
 import { escapeHtml } from "./formatters.js";
 import { setStatus, showToast } from "../core/ui.js";
 import { buildAppLogoIndex, renderDistributions } from "./distributions.js";
@@ -144,8 +145,16 @@ export function initVerticalVideoReportPage() {
     const transcriptZh = firstText(shot.transcriptZh, shot.translation_zh, analysis.speechSubtitleZh, analysis.subtitleZh);
     const audioKind = firstText(shot.audioKind, shot.audioType, shot.audio_kind, shot.audio_type, analysis.audioKind, analysis.audioType)
       || (musicTrack && !transcriptZh ? "bgm_only" : "");
+    const coverPaths = uniquePaths([
+      ...(Array.isArray(video.coverPaths) ? video.coverPaths : []),
+      ...(Array.isArray(video.framePaths) ? video.framePaths : []),
+      ...getAdShotCoverPaths(shot),
+      video.posterPath
+    ]);
     return {
       ...video,
+      coverPaths,
+      posterPath: coverPaths[0] || video.posterPath || "",
       appLogoUrl: video.appLogoUrl || firstText(shot.app?.logoUrl, shot.appLogoUrl, shot.logoUrl),
       authorName: video.authorName || firstText(shot.authorName, shot.raw?.author, shot.brandName),
       authorAvatarUrl: video.authorAvatarUrl || firstText(shot.authorAvatarUrl, shot.authorAvatar, shot.avatarUrl, shot.profileImageUrl, shot.raw?.authorAvatarUrl, shot.raw?.authorAvatar, shot.raw?.avatarUrl, shot.raw?.profileImageUrl, shot.raw?.author?.avatarUrl, shot.raw?.author?.avatarThumb, shot.raw?.authorStats?.avatarUrl),
@@ -191,6 +200,10 @@ export function initVerticalVideoReportPage() {
 
   function firstNumeric(...values) {
     return values.find((value) => Number.isFinite(Number(value)) && Number(value) >= 0);
+  }
+
+  function uniquePaths(values = []) {
+    return Array.from(new Set(values.map((value) => String(value || "").trim()).filter(Boolean)));
   }
 
   loadReport().catch((error) => {

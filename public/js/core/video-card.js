@@ -3,6 +3,8 @@ import { escapeAttribute, escapeHtml, formatAppDisplayName } from "./format.js";
 export function createAdShotVideoCard(shot, options = {}) {
   const shotId = shot.shotId || shot.id || "";
   const shotUrl = shotId ? buildVideoDetailUrl("ttcc", shotId, options) : "#";
+  const analysisStatus = getEffectiveAdShotAnalysisStatus(shot);
+  const statusLabel = formatAnalysisStatus(analysisStatus);
   const coverPaths = getAdShotCoverPaths(shot);
   const coverPath = coverPaths[0] || "";
   const videoPath = getAdShotVideoPath(shot);
@@ -11,7 +13,7 @@ export function createAdShotVideoCard(shot, options = {}) {
   const createdAt = shot.createdAt || shot.capturedAt || shot.updatedAt || "";
   const mediaTag = getAdShotMediaTag(shot, videoPath);
   const card = document.createElement("article");
-  card.className = "video-job-card status-completed";
+  card.className = `video-job-card status-${escapeAttribute(analysisStatus || "completed")}`;
   card.innerHTML = `
     <button class="video-job-cover video-job-trigger ${coverPath ? "" : "is-empty"}" type="button" data-shot-id="${escapeAttribute(shotId)}" data-shot-url="${escapeAttribute(shotUrl)}" data-video-path="${escapeAttribute(videoPath)}" data-poster-path="${escapeAttribute(coverPath || "")}" data-title="${escapeAttribute(title)}" aria-label="播放 ${escapeAttribute(title)}">
       ${coverPath
@@ -28,6 +30,7 @@ export function createAdShotVideoCard(shot, options = {}) {
       </a>
       <div class="video-job-footer">
         <p class="video-job-time video-job-time-dark">${escapeHtml(createdAt)}</p>
+        ${statusLabel ? `<span class="video-job-badge video-job-badge-status">${escapeHtml(statusLabel)}</span>` : ""}
       </div>
     </div>
   `;
@@ -65,6 +68,8 @@ export function getAdShotCoverPath(shot) {
 }
 
 export function getAdShotCoverPaths(shot) {
+  const mediaType = String(shot.mediaType || shot.media?.type || "").trim().toLowerCase();
+  const isPhoto = mediaType === "photo" || /\/photo\//i.test(String(shot.sourceUrl || ""));
   const localImagePaths = [
     ...(Array.isArray(shot.media?.imagePaths) ? shot.media.imagePaths : []),
     ...(Array.isArray(shot.imagePaths) ? shot.imagePaths : []),
@@ -73,24 +78,40 @@ export function getAdShotCoverPaths(shot) {
   ].filter(Boolean);
   const inferredAnalysisPaths = inferAdShotAnalysisCoverPaths(shot);
   const analyzedFramePaths = [
-    shot.analysisArtifacts?.firstFramePath,
     ...(Array.isArray(shot.analysisArtifacts?.visualFramePaths) ? shot.analysisArtifacts.visualFramePaths : []),
     ...(Array.isArray(shot.analysisArtifacts?.visualOcrFramePaths) ? shot.analysisArtifacts.visualOcrFramePaths : [])
   ].filter(Boolean);
-  return uniqueTruthy([
-    ...localImagePaths,
-    ...analyzedFramePaths,
-    ...inferredAnalysisPaths,
+  const videoCovers = [
     shot.media?.firstFramePath,
     shot.firstFramePath,
     shot.first_frame_path,
     shot.media?.posterPath,
+    shot.posterPath,
+    shot.analysisArtifacts?.firstFramePath,
+    ...analyzedFramePaths,
+    ...inferredAnalysisPaths,
     shot.media?.posterUrl,
     shot.coverUrl,
     shot.posterUrl,
+    shot.imageUrl,
+    ...localImagePaths
+  ];
+  const photoCovers = [
+    ...localImagePaths,
+    shot.media?.firstFramePath,
+    shot.firstFramePath,
+    shot.first_frame_path,
+    shot.media?.posterPath,
     shot.posterPath,
+    shot.analysisArtifacts?.firstFramePath,
+    ...analyzedFramePaths,
+    ...inferredAnalysisPaths,
+    shot.media?.posterUrl,
+    shot.coverUrl,
+    shot.posterUrl,
     shot.imageUrl
-  ]);
+  ];
+  return uniqueTruthy(isPhoto ? photoCovers : videoCovers);
 }
 
 function inferAdShotAnalysisCoverPaths(shot = {}) {
@@ -109,6 +130,14 @@ export function getAdShotVideoPath(shot) {
     || shot.media?.videoPath
     || shot.analysisArtifacts?.videoPath
     || (shot.shotId ? `/data/ad-shots/${encodeURIComponent(shot.shotId)}/analysis/video.mp4` : "");
+}
+
+export function getEffectiveAdShotAnalysisStatus(shot = {}) {
+  const status = normalizeStatus(shot.analysisStatus || shot.status);
+  if (status === "completed" && isCompletedWithPlaceholderAnalysis(shot)) {
+    return hasAnalysisFailureSignal(shot) ? "failed" : "pending";
+  }
+  return status;
 }
 
 function bindCoverFallback(card, coverPaths, title) {
@@ -191,6 +220,76 @@ function formatDuration(value) {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function formatAnalysisStatus(status) {
+  const map = {
+    pending: "待分析",
+    queued: "排队中",
+    running: "分析中",
+    failed: "分析异常"
+  };
+  return map[status] || "";
+}
+
+function normalizeStatus(value) {
+  const status = String(value || "").trim().toLowerCase();
+  const map = {
+    "待分析": "pending",
+    "排队中": "queued",
+    "分析中": "running",
+    "分析异常": "failed",
+    "失败": "failed",
+    "完成": "completed",
+    "分析完成": "completed"
+  };
+  return map[status] || status;
+}
+
+function hasAnalysisFailureSignal(shot = {}) {
+  const progressKey = String(shot.analysisProgress?.stageKey || shot.analysis_stage_key || "").trim().toLowerCase();
+  return Boolean(String(shot.analysisError || "").trim()) || progressKey === "completed_with_warning";
+}
+
+function isCompletedWithPlaceholderAnalysis(shot = {}) {
+  if (!hasAnalysisFailureSignal(shot) && hasUsableAnalysisContent(shot)) return false;
+  return !hasUsableAnalysisContent(shot);
+}
+
+function hasUsableAnalysisContent(shot = {}) {
+  if (normalizeText(shot.transcriptZh || shot.transcript_zh || shot.visualSummary || shot.visual_summary)) return true;
+  if (Array.isArray(shot.visualTextSegments) && shot.visualTextSegments.length > 0) return true;
+  const analysis = shot.analysisSummary && typeof shot.analysisSummary === "object" ? shot.analysisSummary : {};
+  const meaningfulFields = [
+    analysis.videoStory,
+    analysis.storySummary,
+    analysis.cardSummary,
+    analysis.script,
+    analysis.hook,
+    analysis.productMechanism,
+    analysis.reusableTemplate,
+    analysis.onScreenTextOriginal,
+    analysis.onScreenTextZh
+  ].map(normalizeText).filter(Boolean);
+  if (meaningfulFields.some((value) => !isPlaceholderAnalysisText(value))) return true;
+  return [
+    analysis.productFeatures,
+    analysis.storyboardFormula,
+    analysis.visualTextSegments,
+    analysis.keyMoments
+  ].some((value) => Array.isArray(value) && value.length > 0);
+}
+
+function isPlaceholderAnalysisText(value) {
+  const text = normalizeText(value);
+  if (!text) return true;
+  return /^等待(?:分析|接入|生成|识别|转写)/.test(text)
+    || /^待(?:分析|生成|识别|转写)/.test(text)
+    || text === "暂无素材拆解。";
+}
+
+function normalizeText(value) {
+  return String(value || "").trim();
 }
 
 function shortenUrl(value) {

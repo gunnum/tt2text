@@ -12,6 +12,7 @@ export function renderUnifiedVideoPlayer(options = {}) {
     videoPath = "",
     posterPath = "",
     coverPath = "",
+    coverPaths = [],
     title = "",
     emptyLabel = "当前素材没有可播放视频。",
     notice = null,
@@ -23,28 +24,36 @@ export function renderUnifiedVideoPlayer(options = {}) {
   } = options;
 
   const subtitleData = buildTimedSubtitleData(item || {});
+  const fallbackCoverPaths = uniquePaths([coverPath, posterPath, ...coverPaths, ...(Array.isArray(item?.coverPaths) ? item.coverPaths : []), ...(Array.isArray(item?.framePaths) ? item.framePaths : [])]);
+  const fallbackCoverPath = fallbackCoverPaths[0] || "";
+  const fallbackPathsAttribute = fallbackCoverPaths.length
+    ? ` data-cover-paths="${escapeAttribute(JSON.stringify(fallbackCoverPaths))}"`
+    : "";
   const hasVisualOverlay = includeVisualTextOverlay && subtitleData.positionedVisualTextSegments.length > 0;
   const hasSpeechOverlay = subtitleData.subtitleSegments.length > 0;
   const hasAnyOverlay = hasVisualOverlay || hasSpeechOverlay;
 
-  if (notice) {
-    const cover = coverPath
-      ? `<img class="${escapeAttribute(imageClassName)}" src="${escapeAttribute(coverPath)}" alt="${escapeAttribute(title + " 封面")}" />`
-      : '<div class="video-player-empty">Video</div>';
-    return cover + renderVideoPlayerNotice(notice);
-  }
+  const noticeHtml = notice ? renderVideoPlayerNotice(notice, { compact: Boolean(videoPath) }) : "";
 
   if (videoPath) {
     return `
-      <video${videoId ? ` id="${escapeAttribute(videoId)}"` : ""} class="${escapeAttribute(videoClassName)}" controls playsinline preload="metadata" src="${escapeAttribute(videoPath)}"${posterPath ? ` poster="${escapeAttribute(posterPath)}"` : ""}></video>
+      <video${videoId ? ` id="${escapeAttribute(videoId)}"` : ""} class="${escapeAttribute(videoClassName)}" controls playsinline preload="metadata" src="${escapeAttribute(videoPath)}"${fallbackCoverPath ? ` poster="${escapeAttribute(fallbackCoverPath)}"` : ""}${fallbackPathsAttribute}></video>
       ${hasAnyOverlay ? renderVideoPlayerCaptionToggles({ hasSpeechOverlay, hasVisualOverlay, speechLabel: subtitleData.audioToggleLabel }) : ""}
       ${hasVisualOverlay ? renderVisualTextOverlay() : ""}
       ${hasSpeechOverlay ? renderSpeechSubtitleOverlay(subtitleData) : ""}
+      ${noticeHtml}
     `;
   }
 
-  if (coverPath) {
-    return `<img class="${escapeAttribute(imageClassName)}" src="${escapeAttribute(coverPath)}" alt="${escapeAttribute(title + " 封面")}" />`;
+  if (notice) {
+    const cover = fallbackCoverPath
+      ? `<img class="${escapeAttribute(imageClassName)}" src="${escapeAttribute(fallbackCoverPath)}" alt="${escapeAttribute(title + " 封面")}"${fallbackPathsAttribute} />`
+      : '<div class="video-player-empty">Video</div>';
+    return cover + noticeHtml;
+  }
+
+  if (fallbackCoverPath) {
+    return `<img class="${escapeAttribute(imageClassName)}" src="${escapeAttribute(fallbackCoverPath)}" alt="${escapeAttribute(title + " 封面")}"${fallbackPathsAttribute} />`;
   }
 
   return `<div class="video-player-empty">${escapeHtml(emptyLabel)}</div>`;
@@ -60,7 +69,8 @@ export function bindUnifiedVideoPlayer(root, options = {}) {
     visualOverlaySelector = "[data-visual-text-overlay]",
     visualTextSelector = "[data-visual-text-content]",
     speechToggleSelector = "[data-player-toggle='speech']",
-    visualToggleSelector = "[data-player-toggle='visual']"
+    visualToggleSelector = "[data-player-toggle='visual']",
+    bindVideoErrorFallback = true
   } = options;
   const subtitleData = buildTimedSubtitleData(item || {});
   const video = root?.querySelector?.(videoSelector);
@@ -78,8 +88,15 @@ export function bindUnifiedVideoPlayer(root, options = {}) {
   let visualEnabled = loadCaptionPreference("visual");
 
   if (!video) {
-    return () => {};
+    return bindPlayerCoverFallback(root);
   }
+
+  const handleVideoError = () => {
+    const coverPaths = readCoverPaths(video);
+    if (!root || !coverPaths.length) return;
+    root.innerHTML = `<img src="${escapeAttribute(coverPaths[0])}" alt="视频封面" data-cover-paths="${escapeAttribute(JSON.stringify(coverPaths))}" />`;
+    bindPlayerCoverFallback(root);
+  };
 
   const currentVideoDuration = () => Number.isFinite(video.duration) && video.duration > 0 ? video.duration : fallbackDuration;
 
@@ -202,6 +219,9 @@ export function bindUnifiedVideoPlayer(root, options = {}) {
   video.addEventListener("timeupdate", updateAll);
   video.addEventListener("seeked", updateAll);
   video.addEventListener("play", updateAll);
+  if (bindVideoErrorFallback) {
+    video.addEventListener("error", handleVideoError, { once: true });
+  }
   window.addEventListener("resize", updateVisualSubtitle);
   updateAll();
 
@@ -212,18 +232,55 @@ export function bindUnifiedVideoPlayer(root, options = {}) {
     video.removeEventListener("timeupdate", updateAll);
     video.removeEventListener("seeked", updateAll);
     video.removeEventListener("play", updateAll);
+    if (bindVideoErrorFallback) {
+      video.removeEventListener("error", handleVideoError);
+    }
     window.removeEventListener("resize", updateVisualSubtitle);
   };
 }
 
-export function renderVideoPlayerNotice(notice = {}) {
+function bindPlayerCoverFallback(root) {
+  const image = root?.querySelector?.("img[data-cover-paths]");
+  if (!image) return () => {};
+  const coverPaths = readCoverPaths(image);
+  let index = Math.max(0, coverPaths.indexOf(image.getAttribute("src") || ""));
+  const handleError = () => {
+    index += 1;
+    const nextPath = coverPaths[index] || "";
+    if (nextPath) {
+      image.src = nextPath;
+      return;
+    }
+    image.remove();
+    if (root && !root.querySelector(".video-player-empty")) {
+      root.insertAdjacentHTML("afterbegin", '<div class="video-player-empty">当前素材没有可用封面。</div>');
+    }
+  };
+  image.addEventListener("error", handleError);
+  return () => image.removeEventListener("error", handleError);
+}
+
+function readCoverPaths(element) {
+  try {
+    return uniquePaths(JSON.parse(element?.dataset?.coverPaths || "[]"));
+  } catch {
+    return [];
+  }
+}
+
+function uniquePaths(values = []) {
+  return Array.from(new Set((Array.isArray(values) ? values : []).map((value) => String(value || "").trim()).filter(Boolean)));
+}
+
+export function renderVideoPlayerNotice(notice = {}, options = {}) {
   const title = String(notice.title || "").trim() || "视频处理中";
   const body = String(notice.body || "").trim();
   const progress = notice.progress && typeof notice.progress === "object"
     ? getAnalysisProgressInfo(notice.progress)
     : null;
+  const className = options.compact || notice.compact ? "video-player-notice compact" : "video-player-notice";
   return `
-    <div class="video-player-notice">
+    <div class="${className}">
       <b>${escapeHtml(title)}</b>
       ${progress ? `<small class="video-player-notice-progress">${escapeHtml(progress.fullText)}</small>` : ""}
       ${body ? `<span>${escapeHtml(body)}</span>` : ""}
@@ -279,6 +336,12 @@ export function buildVideoPlayerStyles() {
     .video-player-notice b { display:block; justify-self:center; width:100%; font-size:16px; line-height:1.35; text-align:center; }
     .video-player-notice-progress { display:block; justify-self:center; width:100%; color:rgba(255,255,255,.82); font-size:12px; line-height:1.45; font-weight:900; letter-spacing:0; text-align:center; }
     .video-player-notice span { display:block; justify-self:center; width:100%; max-width:300px; color:rgba(255,255,255,.76); font-size:12px; line-height:1.55; font-weight:700; text-align:center; }
+    .video-player-notice.compact { inset:12px auto auto 12px; width:min(300px, calc(100% - 24px)); padding:10px 12px; text-align:left; pointer-events:none; }
+    .video-player-notice.compact b,
+    .video-player-notice.compact .video-player-notice-progress,
+    .video-player-notice.compact span { justify-self:start; text-align:left; }
+    .video-player-notice.compact b { font-size:13px; }
+    .video-player-notice.compact span { max-width:none; font-size:11px; line-height:1.45; }
     @media (max-width: 900px) {
       .video-player-caption-toggles { top:10px; right:10px; gap:6px; }
       .video-player-caption-toggle { min-width:68px; min-height:28px; padding:0 9px; font-size:11px; }

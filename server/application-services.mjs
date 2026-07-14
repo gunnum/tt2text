@@ -231,6 +231,7 @@ export function createApplicationServices({
     readSensorTowerCsvImports,
     readPluginDebugLogs: appServices.routeDeps.readPluginDebugLogs,
     readResults,
+    readAdShots: adShotServices.routeDeps.readAdShots,
     readTikTokCommentsRaw,
     fetchQiaomuReviewInsights: reviewInsightsService.routeDeps.fetchQiaomuReviewInsights,
     normalizeText,

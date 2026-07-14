@@ -61,7 +61,8 @@ async function exportSensorTowerBatch(payload = {}) {
           label: item.label,
           skipped: Boolean(item.skipped),
           error: item.error || "",
-          url: summarizeSensorTowerUrl(item.url || "")
+          url: summarizeSensorTowerUrl(item.url || ""),
+          preferBrowserDownload: Boolean(item.preferBrowserDownload)
         }))
       }
     });
@@ -336,8 +337,12 @@ async function exportSensorTowerCsv(payload = {}) {
   await setBadge("CSV", "#0d6f5b");
 
   const captureId = `tt2text-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const preferBrowserDownload = Boolean(payload.batchItem?.preferBrowserDownload);
+  const downloadWaiter = preferBrowserDownload ? createCsvDownloadWaiter(90000) : null;
   await ensureSensorTowerContentScript(tabId);
-  await injectCsvCapture(tabId, captureId);
+  if (!preferBrowserDownload) {
+    await injectCsvCapture(tabId, captureId);
+  }
   void appendDebugLog({
     scope: "background",
     event: "sensortower:csv:trigger",
@@ -351,10 +356,26 @@ async function exportSensorTowerCsv(payload = {}) {
   try {
     pageResponse = await sendSensorTowerTabMessage(tabId, {
       type: "TT2TEXT_CLICK_SENSOR_TOWER_CSV_EXPORT",
-      captureId
+      captureId,
+      preferBrowserDownload
     });
   } catch (error) {
-    throw error;
+    if (!preferBrowserDownload) {
+      throw error;
+    }
+    void appendDebugLog({
+      scope: "background",
+      event: "sensortower:csv:message-channel-fallback",
+      detail: {
+        id: payload.batchItem?.id || "",
+        label: payload.batchItem?.label || "",
+        error: toErrorMessage(error)
+      }
+    });
+    pageResponse = {
+      ok: true,
+      payload: await buildFallbackSensorTowerPagePayload(tabId, payload.batchItem)
+    };
   }
   if (!pageResponse?.ok) {
     throw new Error(pageResponse?.error || "无法触发 Sensor Tower CSV 导出。");
@@ -384,6 +405,7 @@ async function exportSensorTowerCsv(payload = {}) {
     });
     await setBadge("SKIP", "#7a8794");
     setTimeout(() => setBadge("", "#0d6f5b"), 4000);
+    downloadWaiter?.cancel();
     return {
       appName: pagePayload.appName || "",
       dataType: pagePayload.dataType || "",
@@ -408,6 +430,12 @@ async function exportSensorTowerCsv(payload = {}) {
         totalBytes: captured.totalBytes || 0
       }
     });
+    validateSensorTowerCsvMatch({
+      imported: null,
+      pagePayload,
+      batchItem: payload.batchItem,
+      captured
+    });
     const importResponse = await fetch(LOCAL_SENSOR_TOWER_CSV_CONTENT_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -425,6 +453,7 @@ async function exportSensorTowerCsv(payload = {}) {
     if (!importResponse.ok) {
       throw new Error(imported.error || `本地 CSV 内容入库失败：HTTP ${importResponse.status}`);
     }
+    validateSensorTowerCsvMatch({ imported, pagePayload, batchItem: payload.batchItem, captured });
     await setImportStatus({
       state: "done",
       message: imported.duplicate
@@ -447,8 +476,8 @@ async function exportSensorTowerCsv(payload = {}) {
       exportDebug: pageResponse.payload?.exportDebug || null
     }
   });
-  const downloadWaiter = createCsvDownloadWaiter(45000);
-  const download = await downloadWaiter.promise;
+  const activeDownloadWaiter = downloadWaiter || createCsvDownloadWaiter(45000);
+  const download = await activeDownloadWaiter.promise;
   void appendDebugLog({
     scope: "background",
     event: "sensortower:csv:download-complete",
@@ -474,6 +503,7 @@ async function exportSensorTowerCsv(payload = {}) {
   if (!importResponse.ok) {
     throw new Error(imported.error || `本地 CSV 入库失败：HTTP ${importResponse.status}`);
   }
+  validateSensorTowerCsvMatch({ imported, pagePayload, batchItem: payload.batchItem, captured: download });
 
   await setImportStatus({
     state: "done",
@@ -486,6 +516,85 @@ async function exportSensorTowerCsv(payload = {}) {
   await setBadge("OK", "#0d6f5b");
   setTimeout(() => setBadge("", "#0d6f5b"), 4000);
   return imported;
+}
+
+async function buildFallbackSensorTowerPagePayload(tabId, batchItem = {}) {
+  const tab = await chrome.tabs.get(tabId).catch(() => null);
+  const sourceUrl = tab?.url || batchItem.url || "";
+  return {
+    url: sourceUrl,
+    sourceUrl,
+    title: tab?.title || "",
+    pageTitle: tab?.title || "",
+    appName: "",
+    dataType: expectedDataTypeForBatchItem(batchItem) || inferDataTypeFromSensorTowerUrl(sourceUrl),
+    exportTriggeredAt: new Date().toISOString(),
+    exportDebug: {
+      fallback: "message-channel-closed"
+    },
+    capturedCsv: null
+  };
+}
+
+function inferDataTypeFromSensorTowerUrl(value = "") {
+  const text = String(value || "").toLowerCase();
+  if (text.includes("/market-analysis/top-apps")) return "category_rankings";
+  if (text.includes("reviews")) return "reviews";
+  if (text.includes("active-users")) return "active_users";
+  if (text.includes("download")) return "downloads";
+  if (text.includes("revenue")) return "revenue";
+  if (text.includes("usage") || text.includes("retention") || text.includes("time-spent")) return "active_usage";
+  return "unknown_metric";
+}
+
+function validateSensorTowerCsvMatch({ imported, pagePayload, batchItem, captured } = {}) {
+  if (!batchItem?.id) {
+    return;
+  }
+  const expectedType = expectedDataTypeForBatchItem(batchItem);
+  const pageType = normalizeLower(pagePayload?.dataType);
+  const importedType = normalizeLower(imported?.dataType);
+  const sourceUrl = String(pagePayload?.url || pagePayload?.sourceUrl || "");
+  const importedUrl = String(imported?.sourceUrl || "");
+  if (expectedType && importedType && importedType !== expectedType) {
+    throw new Error(`CSV 类型不匹配：${batchItem.label || batchItem.id} 预期 ${expectedType}，实际入库 ${importedType}。`);
+  }
+  if (expectedType && pageType && pageType !== expectedType) {
+    throw new Error(`当前页面类型不匹配：${batchItem.label || batchItem.id} 预期 ${expectedType}，实际页面 ${pageType}。`);
+  }
+  if (sourceUrl && importedUrl && normalizeSensorTowerPath(sourceUrl) !== normalizeSensorTowerPath(importedUrl)) {
+    throw new Error(`CSV 来源页面不匹配：${batchItem.label || batchItem.id} 捕获到了其他页面的 CSV。`);
+  }
+  if (batchItem.id === "category_revenue_top_90d" && imported && !imported.categoryRanking?.rows?.length) {
+    throw new Error("同品类排行 CSV 已入库但没有解析出榜单行。");
+  }
+  if (captured?.pendingBlobUrlOnly) {
+    throw new Error(`CSV 捕获不完整：${batchItem.label || batchItem.id} 只捕获到下载链接，没有拿到内容。`);
+  }
+}
+
+function expectedDataTypeForBatchItem(batchItem = {}) {
+  const id = normalizeLower(batchItem.id);
+  if (id === "category_revenue_top_90d") return "category_rankings";
+  if (id === "reviews") return "reviews";
+  if (id === "active_users_mau") return "active_users";
+  if (id === "downloads") return "downloads";
+  if (id === "revenue") return "revenue";
+  if (id === "engagement" || id === "retention_d1" || id === "demographics_age_gender") return "";
+  return "";
+}
+
+function normalizeLower(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function normalizeSensorTowerPath(value) {
+  try {
+    const url = new URL(value);
+    return url.pathname.replace(/\/+$/, "").toLowerCase();
+  } catch {
+    return String(value || "").split("?")[0].replace(/\/+$/, "").toLowerCase();
+  }
 }
 
 async function sendSensorTowerTabMessage(tabId, message) {
@@ -531,6 +640,7 @@ async function injectCsvCapture(tabId, captureId) {
       const originalCreateObjectUrl = URL.createObjectURL.bind(URL);
       const originalClick = HTMLAnchorElement.prototype.click;
       const captures = [];
+      let accepting = false;
       const clickListener = (event) => {
         const anchor = event.target?.closest?.("a");
         if (!anchor) {
@@ -539,6 +649,7 @@ async function injectCsvCapture(tabId, captureId) {
         const href = anchor.href || "";
         const filename = anchor.download || "";
         if (href.startsWith("blob:") || (filename && looksLikeCsvFilename(filename))) {
+          accepting = true;
           captureAnchorDownload(anchor);
           event.preventDefault();
           event.stopImmediatePropagation();
@@ -570,7 +681,7 @@ async function injectCsvCapture(tabId, captureId) {
 
       function looksLikeCsvFilename(filename) {
         return /\.csv$/i.test(String(filename || ""))
-          || /sensor|tower|download|revenue|review|retention|demographic|收入|下载|评论|留存|用户属性/i.test(String(filename || ""));
+          || /sensor|tower|download|revenue|review|retention|demographic|ranking|rank|top\s*apps|收入|下载|评论|留存|用户属性|排行|排行榜|榜单|应用排行/i.test(String(filename || ""));
       }
 
       async function captureBlob(blob, objectUrl, filename) {
@@ -618,7 +729,7 @@ async function injectCsvCapture(tabId, captureId) {
 
       URL.createObjectURL = function patchedCreateObjectURL(object) {
         const objectUrl = originalCreateObjectUrl(object);
-        if (object instanceof Blob && looksLikeCsvBlob(object)) {
+        if (accepting && object instanceof Blob && looksLikeCsvBlob(object)) {
           captureBlob(object, objectUrl, "");
         }
         return objectUrl;
@@ -628,6 +739,7 @@ async function injectCsvCapture(tabId, captureId) {
         const filename = this.download || "";
         const href = this.href || "";
         if (href.startsWith("blob:") || (filename && looksLikeCsvFilename(filename))) {
+          accepting = true;
           captureAnchorDownload(this);
           return undefined;
         }
@@ -747,7 +859,10 @@ function createCsvDownloadWaiter(timeoutMs) {
 
 function looksLikeCsvDownload(item) {
   const text = `${item.filename || ""} ${item.url || ""} ${item.mime || ""}`.toLowerCase();
-  return text.includes(".csv") || text.includes("text/csv") || text.includes("csv");
+  return text.includes(".csv")
+    || text.includes("text/csv")
+    || text.includes("csv")
+    || /ranking|rank|top\s*apps|排行|排行榜|榜单|应用排行/i.test(text);
 }
 
 function getDownloadBaseName(value) {

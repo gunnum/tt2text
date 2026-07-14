@@ -11,10 +11,9 @@
     .unified-video-shell { display:grid; gap:16px; }
     .unified-video-layout { display:grid; grid-template-columns:minmax(280px, 420px) minmax(0, 1fr); gap:16px; padding:18px; align-items:start; }
     .unified-video-media { position:sticky; top:24px; z-index:3; display:grid; gap:12px; align-content:start; align-self:start; }
-    .unified-video-stage { position:relative; overflow:hidden; border-radius:22px; background:#111; box-shadow:0 18px 45px rgba(31,28,24,.14); }
+    .unified-video-stage { position:relative; justify-self:center; display:grid; width:min(100%, calc(78vh * 9 / 16)); max-width:100%; aspect-ratio:9 / 16; overflow:hidden; border-radius:22px; background:#111; box-shadow:0 18px 45px rgba(31,28,24,.14); }
     .unified-video-stage video,
-    .unified-video-stage img { display:block; width:100%; max-height:78vh; object-fit:cover; background:#111; }
-    .unified-video-stage img { aspect-ratio:9 / 16; }
+    .unified-video-stage img { grid-area:1 / 1; display:block; width:100%; height:100%; max-height:none; object-fit:contain; background:#111; }
     .unified-video-actions { position:relative; z-index:1; display:flex; justify-content:center; gap:10px; flex-wrap:wrap; }
     .icon-action { display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border:1px solid rgba(13,111,91,.18); border-radius:999px; background:rgba(255,255,255,.78); color:#095b4b; box-shadow:0 10px 24px rgba(54,41,18,.08); font-size:16px; line-height:1; text-decoration:none; cursor:pointer; }
     .icon-action.danger { border-color:rgba(139,43,29,.18); color:#8b2b1d; }

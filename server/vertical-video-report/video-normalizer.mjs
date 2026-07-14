@@ -8,13 +8,21 @@ import {
 import {
   normalizeStringArray
 } from "./category-resolver.mjs";
+import {
+  classifyVerticalVideoScript,
+  resolveVerticalVideoProfile
+} from "./analysis-profiles.mjs";
+import {
+  buildBaseAnalysisHash,
+  normalizeStoryboardScenes
+} from "../features/ad-shot-analysis/index.mjs";
 
 export function createVideoNormalizer({ normalizeText, truncateText } = {}) {
   if (typeof normalizeText !== "function" || typeof truncateText !== "function") {
     throw new Error("createVideoNormalizer 缺少依赖：normalizeText/truncateText");
   }
 
-  function toReportVideo(shot) {
+  function toReportVideo(shot, options = {}) {
     const analysis = shot.analysis && typeof shot.analysis === "object" ? shot.analysis : {};
     const metrics = shot.metrics && typeof shot.metrics === "object" ? shot.metrics : {};
     const likeCount = numericCount(metrics.likeCount);
@@ -34,6 +42,25 @@ export function createVideoNormalizer({ normalizeText, truncateText } = {}) {
       || (musicTrack && !transcriptZh ? "bgm_only" : "");
     const authorAvatarUrl = normalizeText(shot.authorAvatarUrl || shot.authorAvatar || shot.avatarUrl || shot.profileImageUrl || shot.raw?.authorAvatarUrl || shot.raw?.authorAvatar || shot.raw?.avatarUrl || shot.raw?.profileImageUrl || shot.raw?.author?.avatarUrl || shot.raw?.author?.avatarThumb || shot.raw?.authorStats?.avatarUrl);
     const followerCount = firstNumeric(shot.followerCount, shot.followers, shot.fansCount, shot.authorFollowerCount, shot.authorFollowers, shot.raw?.followerCount, shot.raw?.followers, shot.raw?.fansCount, shot.raw?.authorFollowerCount, shot.raw?.authorFollowers, shot.raw?.author?.followerCount, shot.raw?.author?.followers, shot.raw?.authorStats?.followerCount, shot.raw?.authorStats?.followers);
+    const framePaths = normalizeFramePaths(shot);
+    const storyboardScenes = normalizeStoryboardScenes({
+      scenes: analysis.storyboardScenes,
+      storyboardFormula: analysis.storyboardFormula,
+      keyMoments: analysis.keyMoments,
+      duration: Number(shot.duration) || null,
+      framePaths,
+      posterPath: shot.media?.posterPath || shot.posterPath || shot.media?.firstFramePath
+    });
+    const hook = truncateText(normalizeText(analysis.hook) || inferHook(script, shot), 160);
+    const baseAnalysis = {
+      ...analysis,
+      cardSummary: summary,
+      videoStory: normalizeText(analysis.videoStory || summary),
+      script,
+      hook,
+      productFeatures,
+      storyboardScenes
+    };
     return {
       id: normalizeText(shot.shotId || shot.id || shot.sourceItemId || shot.sourceAdId || shot.sourceUrl),
       title: title || "未命名视频",
@@ -51,7 +78,7 @@ export function createVideoNormalizer({ normalizeText, truncateText } = {}) {
       analysisCompletedAt: normalizeText(shot.analysisCompletedAt),
       videoPath: normalizeText(shot.media?.videoPath || shot.videoPath),
       posterPath: normalizeText(shot.media?.posterPath || shot.posterPath || shot.media?.firstFramePath),
-      framePaths: normalizeFramePaths(shot),
+      framePaths,
       transcriptZh,
       speechSubtitleZh: normalizeText(analysis.speechSubtitleZh || analysis.subtitleZh),
       visualTextSegments: normalizeVisualTextSegmentsForPlayer(shot.visualTextSegments || analysis.visualTextSegments, Number(shot.duration) || null),
@@ -65,12 +92,16 @@ export function createVideoNormalizer({ normalizeText, truncateText } = {}) {
       isBgmOnly: Boolean(musicTrack && !transcriptZh),
       metrics: { likeCount, commentCount, saveCount, shareCount, viewCount },
       interactionScore,
-      hook: truncateText(inferHook(script, shot), 160),
+      hook,
       summary,
       script: truncateText(script, 900),
       productFeatures: productFeatures.slice(0, 8),
+      creativeStrategy: analysis.creativeStrategy && typeof analysis.creativeStrategy === "object" ? analysis.creativeStrategy : {},
+      storyboardScenes,
+      baseAnalysisHash: normalizeText(analysis.baseAnalysisHash) || buildBaseAnalysisHash(baseAnalysis),
+      hasBaseAnalysis: Boolean(normalizeText(analysis.videoStory || summary) && storyboardScenes.length),
       accountType: inferAccountType(shot),
-      scriptType: inferScriptType(shot, script),
+      scriptType: inferScriptType(shot, script, options.profile),
       exposureLevel: inferExposureLevel(shot, productFeatures, script)
     };
   }
@@ -95,7 +126,7 @@ export function createVideoNormalizer({ normalizeText, truncateText } = {}) {
       shot.media?.firstFramePath,
       shot.media?.posterPath,
       shot.posterPath
-    ].map(normalizeText).filter(Boolean).filter((path, index, list) => list.indexOf(path) === index).slice(0, 12);
+    ].map(normalizeText).filter(Boolean).filter((path, index, list) => list.indexOf(path) === index).slice(0, 80);
   }
 
   function normalizeVisualTextSegmentsForPlayer(value, duration = null) {
@@ -138,7 +169,7 @@ export function createVideoNormalizer({ normalizeText, truncateText } = {}) {
     return value === undefined ? undefined : Number(value);
   }
 
-  function inferScriptType(shot, script) {
+  function inferScriptType(shot, script, profile = null) {
     const text = normalizeText([
       shot.title,
       shot.readableTitle,
@@ -146,12 +177,7 @@ export function createVideoNormalizer({ normalizeText, truncateText } = {}) {
       shot.storySummary,
       script
     ].filter(Boolean).join(" ")).toLowerCase();
-    if (/scroll|doom|social media|micro.?learning|micro learning|碎片|刷屏|短视频|微学习/.test(text)) return "替代刷屏/微学习";
-    if (/tracker|tracking|progress|goal|calendar|stats|goodreads|记录|追踪|统计|目标|进度/.test(text)) return "读书管理/记录";
-    if (/scan|ocr|adhd|dyslexia|listen|text to speech|pdf|朗读|扫描|拍照|倍速|注意力/.test(text)) return "痛点功能演示";
-    if (/challenge|day \d+|days?|books? list|recommend|tbr|书单|挑战|每天|计划/.test(text)) return "主题书单/挑战";
-    if (/youtube|podcast|sponsor|download|知识类|播客|赞助|安装入口/.test(text)) return "知识内容场景挂载";
-    return "泛知识/观点口播";
+    return classifyVerticalVideoScript(profile || resolveVerticalVideoProfile({}), text);
   }
 
   function inferExposureLevel(shot, productFeatures, script) {

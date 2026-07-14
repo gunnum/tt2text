@@ -94,7 +94,115 @@ export function createAdShotStorageService(deps = {}) {
 
   async function hydrateAdShotFromLocalFiles(shot) {
     const withMetadata = await hydrateAdShotFromMetadataFile(shot);
-    return hydrateAdShotFromDetailFile(withMetadata);
+    const withDetail = await hydrateAdShotFromDetailFile(withMetadata);
+    return hydrateAdShotMediaFromLocalFiles(withDetail);
+  }
+
+  async function hydrateAdShotMediaFromLocalFiles(shot) {
+    const shotId = deps.normalizeText(shot.shotId || shot.id);
+    const imagePaths = [
+      ...(Array.isArray(shot.media?.imagePaths) ? shot.media.imagePaths : []),
+      ...(Array.isArray(shot.imagePaths) ? shot.imagePaths : []),
+      ...(Array.isArray(shot.image_paths) ? shot.image_paths : []),
+      ...(Array.isArray(shot.analysisArtifacts?.imagePaths) ? shot.analysisArtifacts.imagePaths : [])
+    ];
+    const coverCandidates = [
+      shot.analysisArtifacts?.firstFramePath,
+      shot.media?.firstFramePath,
+      shot.firstFramePath,
+      shot.first_frame_path,
+      shot.media?.posterPath,
+      shot.posterPath,
+      ...(Array.isArray(shot.analysisArtifacts?.visualFramePaths) ? shot.analysisArtifacts.visualFramePaths : []),
+      ...(Array.isArray(shot.analysisArtifacts?.visualOcrFramePaths) ? shot.analysisArtifacts.visualOcrFramePaths : []),
+      ...imagePaths,
+      ...(shotId ? [
+        `/data/ad-shots/${shotId}/analysis/first-frame.jpg`,
+        `/data/ad-shots/${shotId}/analysis/visual-frames/frame-01-0.00s.jpg`,
+        `/data/ad-shots/${shotId}/analysis/ocr-frames/ocr-frame-001-0.00s.jpg`
+      ] : []),
+      shot.media?.posterUrl,
+      shot.coverUrl,
+      shot.posterUrl,
+      shot.imageUrl,
+      shot.app?.logoUrl,
+      shot.appLogoUrl,
+      shot.logoUrl
+    ];
+    const videoCandidates = [
+      shot.videoPath,
+      shot.media?.videoPath,
+      shot.analysisArtifacts?.videoPath,
+      ...inferSiblingVideoPaths(coverCandidates),
+      ...(shotId ? [
+        `/data/ad-shots/${shotId}/video.mp4`,
+        `/data/ad-shots/${shotId}/video.mkv`,
+        `/data/ad-shots/${shotId}/video.webm`,
+        `/data/ad-shots/${shotId}/video.mov`,
+        `/data/ad-shots/${shotId}/analysis/video.mp4`
+      ] : [])
+    ];
+    const [coverPath, videoPath] = await Promise.all([
+      firstAvailableMediaPath(coverCandidates, { kind: "image" }),
+      firstAvailableMediaPath(videoCandidates, { kind: "video" })
+    ]);
+    if (!coverPath && !videoPath) return shot;
+    return {
+      ...shot,
+      ...(coverPath ? { posterPath: coverPath, firstFramePath: coverPath } : {}),
+      ...(videoPath ? { videoPath } : {}),
+      media: {
+        ...(shot.media && typeof shot.media === "object" ? shot.media : {}),
+        ...(coverPath ? { posterPath: coverPath, firstFramePath: coverPath } : {}),
+        ...(videoPath ? { videoPath } : {})
+      }
+    };
+  }
+
+  async function firstAvailableMediaPath(candidates = [], options = {}) {
+    const normalized = Array.from(new Set(candidates.map(deps.normalizeText).filter(Boolean)));
+    for (const candidate of normalized) {
+      if (/^https?:\/\//i.test(candidate)) return candidate;
+      try {
+        const filePath = deps.resolveProjectPublicPath(candidate);
+        const stat = await fs.stat(filePath);
+        if (stat.isFile() && await isUsableMediaFile(filePath, options.kind)) return candidate;
+      } catch {
+        // Try the next media candidate.
+      }
+    }
+    return "";
+  }
+
+  async function isUsableMediaFile(filePath, kind = "") {
+    if (kind !== "image") return true;
+    const extension = String(filePath).toLowerCase().match(/\.([a-z0-9]+)$/)?.[1] || "";
+    if (extension === "svg") return true;
+    const handle = await fs.open(filePath, "r");
+    try {
+      const buffer = Buffer.alloc(16);
+      const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+      const header = buffer.subarray(0, bytesRead);
+      return header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff
+        || header.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+        || header.subarray(0, 4).toString("ascii") === "RIFF" && header.subarray(8, 12).toString("ascii") === "WEBP"
+        || header.subarray(0, 6).toString("ascii").startsWith("GIF8");
+    } finally {
+      await handle.close();
+    }
+  }
+
+  function inferSiblingVideoPaths(candidates = []) {
+    const extensions = ["mp4", "mkv", "webm", "mov"];
+    const paths = [];
+    for (const candidate of candidates.map(deps.normalizeText).filter(Boolean)) {
+      if (!candidate.startsWith("/") || /^https?:\/\//i.test(candidate)) continue;
+      const base = candidate.replace(/\/[^/]+$/, "");
+      for (const extension of extensions) {
+        paths.push(`${base}/video.${extension}`);
+      }
+    }
+    return paths;
   }
 
   async function hydrateAdShotFromMetadataFile(shot) {

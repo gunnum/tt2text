@@ -258,8 +258,8 @@ def resolve_local_video_source(video_url: str) -> Path | None:
 
 def prepare_local_video(source_path: Path, job_dir: Path) -> dict:
     metadata_path = job_dir / "metadata.json"
-    cleanup_previous_download(job_dir)
     target_path = job_dir / f"{DOWNLOAD_NAME}{source_path.suffix.lower() or '.mp4'}"
+    cleanup_previous_download(job_dir, preserve_paths={source_path})
     if source_path.resolve() != target_path.resolve():
         shutil.copy2(source_path, target_path)
 
@@ -326,9 +326,10 @@ def download_video_with_audio_preference(video_url: str, job_dir: Path, output_t
         raise RuntimeError(f"yt-dlp 下载视频失败：{format_process_error(last_download)}")
 
 
-def cleanup_previous_download(job_dir: Path) -> None:
+def cleanup_previous_download(job_dir: Path, preserve_paths: set[Path] | None = None) -> None:
+    preserved = {path.resolve() for path in (preserve_paths or set())}
     for path in job_dir.glob(f"{DOWNLOAD_NAME}.*"):
-        if path.is_file():
+        if path.is_file() and path.resolve() not in preserved:
             path.unlink()
     for stale_name in ["audio.wav", "first-frame.jpg"]:
         stale_path = job_dir / stale_name
@@ -351,10 +352,14 @@ def locate_video(job_dir: Path) -> Path:
 
 
 def capture_first_frame(video_path: Path, frame_path: Path) -> None:
+    duration = get_video_duration_seconds(video_path)
+    seek_seconds = min(2.0, max(0.5, duration * 0.1)) if duration > 0 else 0.75
     subprocess.run(
         [
             "ffmpeg",
             "-y",
+            "-ss",
+            f"{seek_seconds:.2f}",
             "-i",
             str(video_path),
             "-frames:v",
@@ -493,7 +498,13 @@ def summarize_video_frames(video_url: str, metadata: dict, transcript_payload: d
         f"音频转写: {transcript or '无有效台词'}",
     ])
     if VISION_PROVIDER in {"agnes", "agnes-ai", "sapiens"}:
-        return summarize_video_frames_with_agnes(prompt, frame_paths, output_path)
+        try:
+            return summarize_video_frames_with_agnes(prompt, frame_paths, output_path)
+        except RuntimeError as agnes_error:
+            try:
+                return summarize_video_frames_with_codex(prompt, frame_paths, output_path)
+            except RuntimeError as codex_error:
+                raise RuntimeError(f"{agnes_error}; {codex_error}") from codex_error
     if VISION_PROVIDER not in {"codex", "codex-cli", "local"}:
         raise RuntimeError(f"不支持的视觉理解 provider：{VISION_PROVIDER}，请设置 TT2TEXT_VISION_PROVIDER=agnes 或 codex。")
     return summarize_video_frames_with_codex(prompt, frame_paths, output_path)
@@ -829,6 +840,19 @@ def translate_to_chinese(text: str, source_language: str | None = None, source_l
 
 
 def run_agnes_translation(prompt: str) -> str:
+    try:
+        return run_agnes_translation_primary(prompt)
+    except RuntimeError as agnes_error:
+        try:
+            return run_codex_translation(prompt)
+        except RuntimeError as codex_error:
+            raise RuntimeError(f"{agnes_error}; {codex_error}") from codex_error
+
+
+def run_agnes_translation_primary(prompt: str) -> str:
+    if not AGNES_CALL_SCRIPT:
+        return run_agnes_translation_api(prompt)
+
     command = [
         shutil.which("python3") or "python3",
         AGNES_CALL_SCRIPT,
@@ -850,6 +874,74 @@ def run_agnes_translation(prompt: str) -> str:
         detail = (process.stderr or process.stdout or "").strip()
         raise RuntimeError(f"Agnes 翻译失败: {detail}")
     content = (process.stdout or "").strip()
+    if not content:
+        raise RuntimeError("Agnes 翻译失败: 输出为空。")
+    return content
+
+
+def run_codex_translation(prompt: str) -> str:
+    with tempfile.TemporaryDirectory(prefix="tt2text-translation-") as tmp_dir:
+        output_path = Path(tmp_dir) / "output.txt"
+        command = [
+            CODEX_BIN,
+            "exec",
+            "--ephemeral",
+            "--skip-git-repo-check",
+            "--output-last-message",
+            str(output_path),
+            "-",
+        ]
+        process = subprocess.run(
+            command,
+            input=prompt,
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=CODEX_TRANSLATION_TIMEOUT,
+        )
+        if process.returncode != 0:
+            detail = (process.stderr or process.stdout or "").strip()
+            raise RuntimeError(f"Codex CLI 翻译失败: {detail}")
+        if not output_path.exists():
+            raise RuntimeError("Codex CLI 翻译失败: 未生成输出文件。")
+        content = output_path.read_text(encoding="utf-8").strip()
+        if not content:
+            raise RuntimeError("Codex CLI 翻译失败: 输出为空。")
+        return content
+
+
+def run_agnes_translation_api(prompt: str) -> str:
+    api_key = read_agnes_api_key()
+    if not api_key:
+        raise RuntimeError("Agnes 翻译失败: 未配置 AGNES_API_KEY 或 macOS Keychain agnes-ai/default。")
+    body = {
+        "model": AGNES_TRANSLATION_MODEL,
+        "messages": [
+            {"role": "system", "content": "你是严谨的翻译助手，只返回严格 JSON，不输出代码块。"},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0.1,
+        "max_tokens": 800,
+        "response_format": {"type": "json_object"},
+    }
+    request = urllib.request.Request(
+        f"{AGNES_BASE_URL}/chat/completions",
+        data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=CODEX_TRANSLATION_TIMEOUT) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"Agnes 翻译失败: HTTP {error.code}: {detail}") from error
+    except urllib.error.URLError as error:
+        raise RuntimeError(f"Agnes 翻译失败: {error.reason}") from error
+    content = payload.get("choices", [{}])[0].get("message", {}).get("content", "")
     if not content:
         raise RuntimeError("Agnes 翻译失败: 输出为空。")
     return content

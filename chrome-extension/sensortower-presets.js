@@ -98,11 +98,11 @@ export const SENSOR_TOWER_BATCH_PRESET = [
       comparison_period: "pop",
       category: "0",
       page: "1",
-      page_size: "25",
+      page_size: "200",
       custom_fields_filter_mode: "include_unified_apps",
       period: "day",
-      country: ["all"],
-      device: ["iphone", "ipad", "android"]
+      device: ["iphone", "ipad", "android"],
+      country: "US"
     }
   }
 ];
@@ -164,7 +164,8 @@ export function buildSensorTowerBatchUrls(sourceUrl, pageContext = {}) {
       label: item.label,
       url: url.toString(),
       waitMs: item.waitMs,
-      timeoutMs: item.timeoutMs
+      timeoutMs: item.timeoutMs,
+      preferBrowserDownload: item.preferBrowserDownload
     };
   });
 }
@@ -209,11 +210,11 @@ function buildCategoryRankingParams(context) {
     comparison_period: "pop",
     category: "0",
     page: "1",
-    page_size: "25",
+    page_size: "200",
     custom_fields_filter_mode: "include_unified_apps",
     period: "day",
-    country: ["all"],
-    device: DEFAULT_SENSOR_TOWER_DEVICES
+    device: DEFAULT_SENSOR_TOWER_DEVICES,
+    country: "US"
   };
 }
 

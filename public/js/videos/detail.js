@@ -2,7 +2,7 @@ import { fetchJson } from "../core/http.js";
 import { escapeAttribute, escapeHtml, formatAppDisplayName } from "../core/format.js";
 import { bindUnifiedVideoPlayer, renderUnifiedVideoPlayer } from "../core/video-player.js";
 import { getAnalysisProgressInfo } from "../core/analysis-progress.js";
-import { getAdShotCoverPaths, getAdShotVideoPath } from "../core/video-card.js";
+import { getAdShotCoverPaths, getAdShotVideoPath, getEffectiveAdShotAnalysisStatus } from "../core/video-card.js";
 
 const params = new URLSearchParams(window.location.search);
 const sourceType = params.get("source") || params.get("type") || "normal";
@@ -108,7 +108,8 @@ function adaptAdShotDetail(shot, contextApp) {
     || shot.brandName
     || shot.rawBrandName
   ) || "TTCC 视频";
-  const analysisStatus = normalizeTextValue(shot.analysisStatus || "");
+  const analysisStatus = getEffectiveAdShotAnalysisStatus(shot);
+  const analysisStatusTag = analysisStatus && analysisStatus !== "completed" ? formatStatus(analysisStatus) : "";
   const isAnalysisPending = ["queued", "running"].includes(analysisStatus);
   const analysisProgressInfo = getAnalysisProgressInfo({
     status: analysisStatus,
@@ -126,22 +127,23 @@ function adaptAdShotDetail(shot, contextApp) {
     source: "ttcc",
     title,
     app,
-    tags: [normalizeTextValue(shot.category || shot.industryLabel), formatRegion(shot), shot.analysisStatus === "completed" ? "" : shot.analysisStatus].filter(Boolean),
+    tags: [normalizeTextValue(shot.category || shot.industryLabel), formatRegion(shot), analysisStatusTag].filter(Boolean),
     media: {
       videoPath,
       coverPath,
       posterPath: coverPath,
       coverPaths,
-      notice: isAnalysisPending && !videoPath
+      notice: isAnalysisPending
         ? {
-            title: "分析中，视频生成后可播放",
+            title: videoPath ? "分析仍在进行" : "分析中，视频生成后可播放",
             progress: {
               status: analysisStatus,
               stageKey: shot.analysisProgress?.stageKey,
               stageLabel: shot.analysisProgress?.stageLabel || shot.analysisStage,
               message: shot.analysisProgress?.message
             },
-            body: normalizeTextValue(shot.analysisProgress?.message || shot.analysisStage) || "正在下载/转写/生成素材拆解，完成后刷新页面即可播放本地视频。"
+            body: normalizeTextValue(shot.analysisProgress?.message || shot.analysisStage)
+              || (videoPath ? "视频已可预览，素材拆解还在生成。" : "正在下载/转写/生成素材拆解，完成后刷新页面即可播放本地视频。")
           }
         : null
     },
@@ -149,8 +151,8 @@ function adaptAdShotDetail(shot, contextApp) {
       sourceUrl: shot.sourceUrl || "",
       appUrl: app?.id ? `/apps/app.html?id=${encodeURIComponent(app.id)}` : "",
       canDelete: true,
-      canAnalyze: shot.analysisStatus !== "completed" || hasMissingLocalVideo,
-      analyzeLabel: ["queued", "running"].includes(shot.analysisStatus) ? "分析中" : "重新分析"
+      canAnalyze: analysisStatus !== "completed" || hasMissingLocalVideo,
+      analyzeLabel: ["queued", "running"].includes(analysisStatus) ? "分析中" : "重新分析"
     },
     metricsTitle: shot.sourcePlatform === "tiktok" ? "素材互动" : "广告投放效果",
     metrics: buildAdShotMetrics(shot),
@@ -158,7 +160,7 @@ function adaptAdShotDetail(shot, contextApp) {
     analysisItems: [
       { label: "视频剧情", body: analysis.videoStory || shot.storySummary || shot.highlight },
       { label: "产品 feature", items: arrayOfText(analysis.productFeatures) },
-      { label: "镜头结构", items: arrayOfText(analysis.storyboardFormula) },
+      { label: "镜头结构", items: formatStoryboardScenes(analysis) },
       { label: "复用模板", body: analysis.reusableTemplate },
       { label: "画面文字", body: analysis.onScreenTextZh || shot.onScreenTextZh }
     ].filter((entry) => entry.body || entry.items?.length),
@@ -177,12 +179,32 @@ function adaptAdShotDetail(shot, contextApp) {
       ["来源", "TikTok Creative Center"],
       ["语音字幕", formatAudioSourceLabel(shot, analysis)],
       ["画面文字", Array.isArray(analysis.visualTextSegments) ? `OCR/视觉识别 ${analysis.visualTextSegments.length} 段` : "待识别"],
-      ["素材拆解", shot.analysisStatus === "completed" ? "LLM 生成" : "待生成"],
+      ["素材拆解", analysisStatus === "completed" ? "LLM 生成" : "待生成"],
       ...(isAnalysisPending ? [["当前进度", analysisProgressInfo.fullText]] : [])
     ],
     comments: [],
     raw: shot
   };
+}
+
+function formatStoryboardScenes(analysis = {}) {
+  const scenes = Array.isArray(analysis.storyboardScenes) ? analysis.storyboardScenes : [];
+  if (!scenes.length) return arrayOfText(analysis.storyboardFormula);
+  return scenes.map((scene, index) => {
+    const start = Number(scene?.start);
+    const end = Number(scene?.end);
+    const range = Number.isFinite(start) && Number.isFinite(end) && end > start
+      ? `${formatSceneSecond(start)}-${formatSceneSecond(end)}s`
+      : `分镜 ${index + 1}`;
+    const role = normalizeTextValue(scene?.role);
+    const text = normalizeTextValue(scene?.scene);
+    return [range, role, text].filter(Boolean).join(" · ");
+  }).filter(Boolean);
+}
+
+function formatSceneSecond(value) {
+  const number = Number(Number(value || 0).toFixed(2));
+  return Number.isInteger(number) ? String(number) : String(number);
 }
 
 function formatAudioSourceLabel(item = {}, analysis = {}) {
@@ -266,6 +288,7 @@ function renderMedia(detail) {
     videoPath: detail.media.videoPath,
     posterPath: detail.media.posterPath,
     coverPath: detail.media.coverPath,
+    coverPaths: detail.media.coverPaths,
     title: detail.title,
     notice: detail.media.notice,
     item: detail.raw || {},
@@ -281,7 +304,8 @@ function bindMediaFallback(detail) {
   }
   bindUnifiedVideoPlayer(document.querySelector(".unified-video-stage"), {
     item: detail.raw || {},
-    duration: Number(detail.raw?.duration || 0)
+    duration: Number(detail.raw?.duration || 0),
+    bindVideoErrorFallback: false
   });
   video.addEventListener("error", () => {
     const stage = video.closest(".unified-video-stage");
@@ -321,6 +345,7 @@ function bindMediaFallback(detail) {
       ? renderUnifiedVideoPlayer({
           coverPath: fallbackDetail.media.coverPath,
           posterPath: fallbackDetail.media.posterPath,
+          coverPaths: fallbackDetail.media.coverPaths,
           title: fallbackDetail.title,
           notice: fallbackNotice,
           item: fallbackDetail.raw || {}
@@ -592,11 +617,15 @@ function findAdShot(adShots, shotId) {
 }
 
 function getAdShotAnalysis(shot) {
-  return shot.analysisSummary && typeof shot.analysisSummary === "object"
-    ? shot.analysisSummary
-    : shot.analysis && typeof shot.analysis === "object"
-      ? shot.analysis
-      : {};
+  const stored = shot.analysisSummary && typeof shot.analysisSummary === "object" ? shot.analysisSummary : {};
+  const normalized = shot.analysis && typeof shot.analysis === "object" ? shot.analysis : {};
+  return {
+    ...stored,
+    ...normalized,
+    storyboardScenes: Array.isArray(normalized.storyboardScenes) && normalized.storyboardScenes.length
+      ? normalized.storyboardScenes
+      : stored.storyboardScenes
+  };
 }
 
 function buildNormalMetrics(engagement = {}) {
@@ -683,6 +712,7 @@ function formatObjective(shot) {
 
 function formatStatus(status) {
   const map = {
+    pending: "待分析",
     queued: "排队中",
     running: "分析中",
     failed: "分析异常"

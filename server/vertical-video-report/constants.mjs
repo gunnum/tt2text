@@ -1,7 +1,7 @@
 export const HIGHLIGHT_BREAKDOWN_MIN = 5;
 export const HIGHLIGHT_BREAKDOWN_MAX = 15;
-export const HIGHLIGHT_SCHEMA_VERSION = 2;
-export const HIGHLIGHT_SCENE_MAX = 5;
+export const HIGHLIGHT_SCHEMA_VERSION = 3;
+export const HIGHLIGHT_SCENE_MAX = 12;
 export const CODEX_HIGHLIGHT_TIMEOUT_MS = 120_000;
 export const SNAPSHOT_KEEP_LIMIT = 5;
 
